@@ -1,7 +1,7 @@
 # Task Plan Implementasi — InsightFlow Self-Service AI Dashboard
 
-> **Status Keseluruhan:** 🟡 Dalam Persiapan — `~2%`  
-> **Fokus Saat Ini:** Backend (Golang Fiber) → Frontend (Next.js) → *(Testing: ditunda)*  
+> **Status Keseluruhan:** 🟡 Sedang Berjalan — `~18%`  
+> **Fokus Saat Ini:** Backend — Fase 2 (Auth & Master Data)  
 > **Terakhir Diperbarui:** 24 April 2026
 
 ---
@@ -21,8 +21,8 @@
 
 | Fase | Area | Progress | Status |
 |---|---|---|---|
-| **Fase 0** | Persiapan & Klarifikasi | `33%` (7/21) | 🟡 Berjalan |
-| **Fase 1** | Backend — Setup & Fondasi | `0%` | 🔴 Belum |
+| **Fase 0** | Persiapan & Klarifikasi | `100%` ✅ | 🟢 Selesai |
+| **Fase 1** | Backend — Setup & Fondasi | `90%` | 🟡 Hampir Selesai |
 | **Fase 2** | Backend — Auth & Master Data | `0%` | 🔴 Belum |
 | **Fase 3** | Backend — Transaksi | `0%` | 🔴 Belum |
 | **Fase 4** | Backend — Dashboard & AI | `0%` | 🔴 Belum |
@@ -34,14 +34,14 @@
 | **Fase 10** | Security Hardening | `0%` | 🔴 Belum |
 | ~~**Fase 11**~~ | ~~Testing~~ | ~~ditunda~~ | ⏸️ Ditunda |
 
-**Total Keseluruhan: `7 / ~128 task` selesai**
+**Total Keseluruhan: `~30 / ~128 task` selesai**
 
 ---
 
 ## FASE 0 — Persiapan & Klarifikasi PRD
 
 > **Target:** Semua pertanyaan stakeholder terjawab, API docs tersusun, environment siap.  
-> **Progress: `33%` (7/21 task)** ✅ 0.1 selesai
+> **Progress: `100%` ✅ Selesai**
 
 ### 0.1 Klarifikasi Stakeholder ✅
 
@@ -61,91 +61,83 @@
 
 ### 0.2 API Documentation
 
+- [x] Format respons standar `{ success, message, data, errors }` — diimplementasikan di `internal/response/response.go`
+- [x] Semua error code (400, 401, 403, 404, 409, 500) — tersedia di response helpers
 - [ ] Setup Postman Collection atau OpenAPI 3.0
-- [ ] Definisikan format respons standar `{ success, message, data, errors }`
-- [ ] Definisikan semua error code (400, 401, 403, 404, 409, 500)
 - [ ] Dokumentasikan semua 21 endpoint dengan contoh request + response
 - [ ] Hosting Swagger UI di `/api/docs`
 - [ ] Commit Postman Collection `.json` ke repo
 
 ### 0.3 Setup Repository & Environment
 
-- [ ] Inisialisasi Git repository dengan struktur folder `be-penjualan/` dan `fe-penjualan/`
-- [ ] Buat `.gitignore` (pastikan `.env` masuk)
-- [ ] Buat `docker-compose.yml` untuk PostgreSQL + n8n (development)
-- [ ] Buat `.env.example` dengan semua variable yang dibutuhkan
+- [x] Inisialisasi Git repository dengan struktur folder `be-penjualan/` dan `fe-penjualan/`
+- [x] Buat `.gitignore` (`.env` sudah masuk)
+- [x] Buat `docker-compose.yml` untuk PostgreSQL + n8n (development)
+- [x] Buat `.env.example` dengan semua variable yang dibutuhkan
 
 ---
 
 ## FASE 1 — Backend: Setup & Fondasi
 
 > **Target:** Go Fiber project berjalan, database schema terbuat, migration tools siap.  
-> **Progress: `0%`** | Lokasi: `be-penjualan/`
+> **Progress: `90%`** ✅ Build sukses | Lokasi: `be-penjualan/`
 
 ### 1.1 Init Project Go Fiber
 
-- [ ] `go mod init` dengan nama module yang sesuai
-- [ ] Install dependency utama:
-  - `github.com/gofiber/fiber/v2`
-  - `github.com/jackc/pgx/v5` (pgxpool)
-  - `github.com/golang-migrate/migrate/v4`
-  - `github.com/golang-jwt/jwt/v5`
-  - `github.com/go-playground/validator/v10`
-  - `github.com/rs/zerolog`
-  - `github.com/joho/godotenv`
-- [ ] Setup struktur folder:
-  ```
-  /cmd
-  /internal
-    /handler
-    /service
-    /repository
-    /middleware
-    /domain
-  /config
-  /db/migrations
-  ```
-- [ ] Setup konfigurasi dari `.env` (DB DSN, JWT Secret, n8n URL, Telegram Token)
-- [ ] Setup PostgreSQL connection pool (`pgxpool`)
+- [x] `go mod init insightflow/be-penjualan`
+- [x] Install dependency utama:
+  - [x] `github.com/gofiber/fiber/v2` v2.52.12
+  - [x] `github.com/jackc/pgx/v5` v5.9.2 (pgxpool)
+  - [x] `github.com/golang-migrate/migrate/v4` v4.19.1
+  - [x] `github.com/golang-jwt/jwt/v5` v5.3.1
+  - [x] `github.com/go-playground/validator/v10` v10.30.2
+  - [x] `github.com/rs/zerolog` v1.35.1
+  - [x] `github.com/joho/godotenv` v1.5.1
+  - [x] `golang.org/x/crypto` (bcrypt)
+- [x] Setup struktur folder (`cmd/`, `internal/`, `config/`, `db/migrations/`)
+- [x] Setup konfigurasi dari `.env` — `config/config.go`
+- [x] Setup PostgreSQL connection pool — `internal/database/database.go`
 
 ### 1.2 Database Migration
 
-- [ ] Setup migration tool (`golang-migrate`)
-- [ ] Migration: `CREATE SCHEMA app`
-- [ ] Migration: `CREATE SCHEMA bisnis`
-- [ ] Migration: `app.users` (id, nama, email, password, role, telegram_user_id, aktif, created_at)
-- [ ] Migration: `app.telegram_config` (id, nama_grup, chat_id, aktif, jam_summary, threshold)
-- [ ] Migration: `app.saved_dashboards` (id, user_id, nama, konfigurasi JSONB, created_at)
-- [ ] Migration: `bisnis.tbl_produk` (id, kode_produk, nama, kategori_pakaian, ukuran, warna, bahan, harga, stok, aktif)
-- [ ] Migration: `bisnis.tbl_customer` (id, kode_cust, nama, email, telepon, alamat, created_at)
-- [ ] Migration: `bisnis.tbl_order` (id, no_order, customer_id, sales_id, tanggal, status, total, created_at)
-- [ ] Migration: `bisnis.tbl_order_detail` (id, order_id, produk_id, qty, harga_saat, subtotal)
-- [ ] Migration: `bisnis.tbl_pembayaran` (id, order_id, jumlah, metode, status, tanggal)
-- [ ] Migration: `bisnis.tbl_pengiriman` (id, order_id, kurir, no_resi, status, tanggal)
+- [x] Setup migration tool (`golang-migrate`) — tersedia di `go.mod`
+- [x] Migration 001: `CREATE SCHEMA app` + `CREATE SCHEMA bisnis`
+- [x] Migration 002: `app.users`, `app.telegram_config`, **`app.anomaly_config`** *(per-metric threshold)*, `app.saved_dashboards`
+- [x] Migration 003: `bisnis.tbl_produk`, `bisnis.tbl_customer`, `bisnis.tbl_order`, `bisnis.tbl_order_detail`, `bisnis.tbl_pembayaran`, `bisnis.tbl_pengiriman`
+- [x] Migration 004: Seed data (admin default, anomaly config, 10 sample produk)
+- [ ] Jalankan migration di database (menunggu PostgreSQL tersedia)
 
 ### 1.3 Indexing Database
 
-- [ ] `CREATE INDEX ON bisnis.tbl_order(tanggal)`
-- [ ] `CREATE INDEX ON bisnis.tbl_order(sales_id)`
-- [ ] `CREATE INDEX ON bisnis.tbl_order(status)`
-- [ ] `CREATE INDEX ON bisnis.tbl_produk(kategori_pakaian)`
-- [ ] `CREATE INDEX ON app.users(telegram_user_id)`
+- [x] Index `tbl_order(tanggal)`, `tbl_order(sales_id)`, `tbl_order(status)`, `tbl_order(customer_id)` — di migration 003
+- [x] Index `tbl_produk(kategori_pakaian)`, `tbl_produk(aktif)` — di migration 003
+- [x] Index `tbl_order_detail(order_id)`, `tbl_order_detail(produk_id)` — di migration 003
+- [x] Index `tbl_pembayaran(order_id)` — di migration 003
+- [x] Index `users(telegram_user_id)` — di migration 002
 
 ### 1.4 Seeder Data Development
 
-- [ ] Seeder: user admin + manager + 3 sales (dengan bcrypt password)
-- [ ] Seeder: 20 produk pakaian dummy (berbagai kategori, ukuran, warna)
-- [ ] Seeder: 10 customer dummy
+- [x] Seeder: user admin default (`admin@insightflow.id`) — migration 004
+- [x] Seeder: 10 produk pakaian dummy — migration 004
+- [ ] Seeder: user manager + 3 sales
+- [ ] Seeder: customer dummy
 - [ ] Seeder: sample order + detail + pembayaran + pengiriman
 
 ### 1.5 Non-Functional Setup
 
-- [ ] `GET /health` — health check endpoint
-- [ ] Structured logging dengan `zerolog`
-- [ ] Rate limiting middleware (Fiber)
-- [ ] Request timeout 30 detik
-- [ ] Graceful shutdown handler (SIGTERM)
-- [ ] CORS middleware (whitelist frontend URL)
+- [x] `GET /health` — health check endpoint (di `cmd/main.go`)
+- [x] Structured logging dengan `zerolog` — `cmd/main.go`
+- [ ] Rate limiting middleware (Fiber) — *akan ditambahkan ke router*
+- [x] Request timeout 30 detik — dikonfigurasi di Fiber config
+- [x] Graceful shutdown handler (SIGTERM) — `cmd/main.go`
+- [x] CORS middleware (whitelist frontend URL) — `cmd/main.go`
+
+**Tambahan yang sudah selesai:**
+- [x] `internal/domain/domain.go` — semua struct domain (User, Produk, Customer, Order, dll)
+- [x] `internal/middleware/auth.go` — `AuthRequired`, `RoleGuard`, `ViewerReadOnly`
+- [x] `internal/response/response.go` — semua helper response (OK, Created, BadRequest, dll)
+- [x] `internal/router/router.go` — struktur semua route group
+- [x] `go build ./...` — ✅ Build sukses
 
 ---
 

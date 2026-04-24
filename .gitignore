@@ -1,0 +1,40 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Go
+be-penjualan/vendor/
+be-penjualan/bin/
+be-penjualan/*.exe
+be-penjualan/*.log
+
+# Node / Next.js
+fe-penjualan/node_modules/
+fe-penjualan/.next/
+fe-penjualan/out/
+fe-penjualan/.turbo/
+
+# n8n
+n8n-data/
+n8n-local/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+coverage/
+*.out
+
+# Build artifacts
+dist/
+build/
