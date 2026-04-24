@@ -1,22 +1,25 @@
 # Product Requirements Document (PRD)
-# InsightFlow — Self-Service AI Analytics Dashboard
+# InsightFlow — Self-Service AI Dashboard Penjualan Pakaian
 
 
 ## 1. Project Overview
 
 ### 1.1 Ringkasan Proyek
 
-**InsightFlow** adalah platform analitik *self-service* berbasis AI yang memungkinkan pengguna bisnis non-teknis untuk secara mandiri melihat, memahami, dan mengambil keputusan dari data penjualan — tanpa perlu keahlian teknis, tanpa query SQL, dan tanpa bergantung pada tim IT atau Data Analyst.
+**InsightFlow** adalah platform e-commerce dan analitik *self-service* berbasis AI untuk **penjualan pakaian (fashion)**. Platform ini memungkinkan pengguna bisnis non-teknis untuk secara mandiri melihat, memahami, dan mengambil keputusan dari data penjualan — tanpa perlu keahlian teknis, tanpa query SQL, dan tanpa bergantung pada tim IT atau Data Analyst.
 
-Platform ini juga dilengkapi dengan **Asisten Monitoring Penjualan via Telegram** yang secara proaktif mengirimkan ringkasan harian, peringatan anomali, dan mampu menjawab pertanyaan bisnis secara *real-time* langsung dari aplikasi chat yang sudah digunakan tim sehari-hari.
+Platform ini memiliki tiga pilar utama:
+1. **Halaman Toko (Front Page)** — Katalog produk pakaian dengan **AI Chat Assistant (streaming)** yang membantu customer bertanya produk, rekomendasi outfit, dan cek ketersediaan.
+2. **Halaman Admin** — Seperti toko online pada umumnya: kelola produk, order, pembayaran, pengiriman, dan laporan.
+3. **Asisten Monitoring via Telegram** — Setiap role sales dapat meminta data (laporan, performa) via Telegram dan menerima ringkasan harian otomatis setiap pukul **07.00** melalui **n8n scheduler**.
 
 ### 1.2 Ringkasan Eksekutif
 
 | Atribut | Detail |
 |---|---|
-| **Nama Proyek** | InsightFlow — Self-Service AI Analytics Dashboard |
-| **Tujuan Utama** | Demokratisasi akses analitik data bagi seluruh pengguna bisnis, bukan hanya tim teknis |
-| **Target Pengguna Utama** | Manajer Penjualan, Eksekutif, Staff Admin non-teknis |
+| **Nama Proyek** | InsightFlow — Self-Service AI Dashboard Penjualan Pakaian |
+| **Tujuan Utama** | Platform penjualan pakaian dengan analitik AI self-service dan asisten chat cerdas |
+| **Target Pengguna Utama** | Customer (pembeli), Sales, Manajer Penjualan, Admin |
 | **Platform** | Web Application (Desktop-first) + Telegram Bot |
 | **Tech Stack** | Next.js · Golang · n8n · PostgreSQL · Telegram Bot API |
 | **Timeline MVP** | 3 Bulan |
@@ -35,11 +38,14 @@ Istilah-istilah teknis dan bisnis yang digunakan dalam dokumen ini:
 | **Insight** | Ringkasan analitis berbahasa Indonesia yang dihasilkan AI untuk menjelaskan arti dari data |
 | **Anomali** | Penyimpangan signifikan dari pola normal yang terdeteksi secara otomatis oleh AI |
 | **Flag** | Tanda visual (ikon/warna) yang menandai adanya anomali atau masalah pada data |
+| **AI Chat Assistant** | Fitur chat streaming di halaman depan yang membantu customer bertanya produk, rekomendasi, dan cek ketersediaan |
+| **SSE** | *Server-Sent Events* — protokol streaming satu arah dari server ke client untuk chat real-time |
 | **n8n** | Platform *workflow automation* open-source yang digunakan sebagai otak pemrosesan AI |
 | **LLM** | *Large Language Model* — model AI bahasa besar yang digunakan untuk menghasilkan teks insight |
 | **Webhook** | Mekanisme komunikasi antar sistem secara otomatis berbasis HTTP |
 | **CRUD** | Create, Read, Update, Delete — operasi dasar pengelolaan data |
 | **Threshold** | Batas nilai yang dikonfigurasi untuk memicu alert anomali (misal: penurunan > 10%) |
+| **Varian Produk** | Kombinasi ukuran dan warna dari satu produk pakaian (misal: Kaos Polos - L - Hitam) |
 | **tbl_** | Prefix nama tabel di database PostgreSQL |
 
 ---
@@ -48,20 +54,20 @@ Istilah-istilah teknis dan bisnis yang digunakan dalam dokumen ini:
 
 ### 3.1 Situasi Saat Ini
 
-Pengguna bisnis sangat bergantung pada tim analis data atau IT untuk mengekstrak data, membangun laporan, dan menginterpretasikan hasilnya. Siklus ini memakan waktu berhari-hari hanya untuk mendapatkan satu laporan sederhana.
+Bisnis penjualan pakaian memiliki dinamika tinggi — tren fashion berubah cepat, perputaran stok harus gesit, dan customer membutuhkan respons cepat soal ketersediaan ukuran/warna. Namun, pengguna bisnis masih sangat bergantung pada tim IT untuk mengekstrak data dan membangun laporan. Siklus ini memakan waktu berhari-hari.
 
-Manajer penjualan juga tidak mendapatkan notifikasi *real-time* ketika terjadi penyimpangan performa. Mereka baru mengetahui masalah setelah laporan akhir periode selesai — terlambat untuk mengambil tindakan korektif yang efektif.
+Customer juga tidak memiliki cara mudah untuk bertanya langsung soal produk — mereka harus mencari manual di katalog atau menghubungi sales satu per satu. Di sisi lain, manajer penjualan tidak mendapatkan notifikasi *real-time* ketika terjadi penyimpangan performa. Tim sales di lapangan juga kesulitan mengakses data performa mereka tanpa membuka dashboard di laptop.
 
 ### 3.2 Proses Bisnis Penjualan (Sumber Data)
 
-Data yang dibaca oleh InsightFlow bersumber dari proses bisnis penjualan sehari-hari yang tersimpan di PostgreSQL. Seluruh transaksi dari proses di bawah ini **menulis** data ke database, dan InsightFlow hanya **membaca** data tersebut.
+Data yang dibaca oleh InsightFlow bersumber dari proses bisnis penjualan pakaian sehari-hari yang tersimpan di PostgreSQL. Seluruh transaksi dari proses di bawah ini **menulis** data ke database, dan InsightFlow hanya **membaca** data tersebut untuk analitik.
 
 ```mermaid
 flowchart LR
-    subgraph MASTER ["📦 Data Master — CRUD"]
-        P["Produk\n(Nama, Harga, Stok)"]
+    subgraph MASTER ["👗 Data Master — CRUD"]
+        P["Produk Pakaian\n(Nama, Harga, Ukuran, Warna, Stok)"]
         C["Customer\n(Data Pembeli)"]
-        U["User/Sales\n(Staff Penjualan)"]
+        U["User/Sales\n(Staff Penjualan + Role)"]
     end
 
     subgraph TRX ["🧾 Siklus Transaksi Penjualan"]
@@ -102,18 +108,21 @@ flowchart LR
 
 | Persona | Pain Point |
 |---|---|
+| **Customer** | Tidak ada cara mudah bertanya soal ketersediaan ukuran/warna, harus cari manual di katalog |
+| **Sales** | Tidak bisa cek performa penjualan sendiri tanpa buka dashboard, sulit akses data via mobile |
 | **Manajer Penjualan** | Tidak tahu performa harian tanpa buka laptop & buka sistem, tidak dapat peringatan otomatis |
-| **Eksekutif / Direktur** | Laporan datang terlambat, format rumit, tidak ada ringkasan yang mudah dibaca |
-| **Staff Admin** | Harus minta bantuan IT/Data setiap ingin melihat data, proses lama & bergantung |
+| **Admin** | Harus minta bantuan IT setiap ingin melihat data, proses lama & bergantung |
 | **Tim IT / Data Analyst** | Overwhelmed dengan permintaan laporan ad-hoc yang seharusnya bisa dilayani mandiri |
 
 ### 4.3 Detail Pain Points
 
+- **Customer Tidak Terlayani 24/7:** Pertanyaan soal produk (ukuran, warna, bahan, ketersediaan) hanya bisa dijawab saat sales online.
 - **Ketergantungan Tinggi:** Pengguna menunggu berhari-hari untuk permintaan *pull data* sederhana dari tim IT/Data.
 - **Kompleksitas Alat:** Alat BI tradisional (Tableau, PowerBI) sangat kompleks, kurva pembelajaran curam untuk pengguna non-teknis.
 - **Kebingungan Visualisasi:** Pengguna tidak tahu *chart* apa yang paling tepat merepresentasikan data mereka.
 - **Kesenjangan Interpretasi:** Bahkan ketika grafik sudah tersedia, pengguna kesulitan mengidentifikasi anomali dan menarik kesimpulan bisnis yang *actionable*.
 - **Tidak Ada Monitoring Proaktif:** Tim penjualan tidak mendapat peringatan dini ketika performa menurun.
+- **Sales Tidak Bisa Akses Data Mandiri:** Sales harus bergantung pada manajer untuk tahu performa penjualan mereka sendiri.
 - **Konteks Komunikasi Terputus:** Diskusi data bisnis terjadi di *platform* berbeda (email, WhatsApp) dengan tempat datanya berada.
 
 ---
@@ -124,7 +133,8 @@ flowchart LR
 
 1. Mengurangi ketergantungan pada tim IT/Data untuk permintaan laporan rutin sebesar **> 70%**.
 2. Mempercepat waktu respons terhadap anomali penjualan dari hitungan **hari → menit**.
-3. Memberikan visibilitas data harian kepada manajer penjualan **tanpa perlu login ke sistem**.
+3. Memberikan visibilitas data harian kepada manajer dan sales **tanpa perlu login ke sistem** (via Telegram).
+4. Meningkatkan konversi customer dengan menyediakan **AI Chat Assistant 24/7** di halaman toko.
 
 ### 5.2 Metrik Keberhasilan (KPI)
 
@@ -132,7 +142,8 @@ flowchart LR
 |---|---|
 | Waktu pengguna menghasilkan laporan pertama | ≤ 5 menit sejak login |
 | Jumlah klik untuk melihat laporan | ≤ 3 klik |
-| Waktu pengiriman Telegram daily summary | Setiap hari pukul 08.00, 0 miss |
+| Waktu respons AI Chat Assistant | ≤ 3 detik untuk mulai streaming |
+| Waktu pengiriman Telegram daily summary | Setiap hari pukul 07.00, 0 miss |
 | Waktu deteksi & notifikasi anomali ke Telegram | ≤ 15 menit setelah data masuk DB |
 | Waktu respons Telegram Bot atas pertanyaan user | ≤ 10 detik |
 | Tingkat kepuasan pengguna non-teknis (survei) | ≥ 4/5 bintang |
@@ -145,15 +156,16 @@ flowchart LR
 
 | # | Solusi | Penjelasan |
 |---|---|---|
-| 1 | **Pilih Laporan Otomatis** | Pengguna memilih jenis laporan dari menu dropdown yang mudah dipahami (bukan query SQL). Sistem langsung mengambil data dari PostgreSQL. |
-| 2 | **Auto-Visualisasi Cerdas** | AI mendeteksi tipe data dan secara otomatis memilih jenis chart yang paling tepat: Line Chart untuk data waktu, Funnel untuk tahapan, Pie/Bar untuk perbandingan kategori. |
-| 3 | **AI Insight Generator** | Setiap laporan disertai ringkasan teks 2-3 kalimat dalam Bahasa Indonesia yang menjelaskan tren utama dan apa artinya bagi bisnis. |
-| 4 | **Smart Anomaly Flagging** | AI mendeteksi penyimpangan signifikan (misal: penjualan turun >10% dari rata-rata) dan menandainya secara visual dengan ikon peringatan + penjelasan singkat. |
-| 5 | **Rekomendasi Actionable** | Selain menandai masalah, AI memberikan saran tindakan konkret (misal: *"Penjualan produk X turun 20% — pertimbangkan promosi atau cek stok."*) |
-| 6 | **Ekspor Laporan** | Pengguna dapat mengunduh tampilan dashboard sebagai PDF atau gambar untuk keperluan rapat. |
-| 7 | **Telegram Daily Summary** | n8n secara otomatis mengirimkan ringkasan penjualan harian setiap pagi ke grup/chat Telegram tim yang dikonfigurasi. |
-| 8 | **Telegram Anomaly Alert** | Ketika anomali terdeteksi di data baru, n8n langsung mengirimkan pesan peringatan ke Telegram dalam < 15 menit. |
-| 9 | **Telegram Q&A Bot** | Pengguna bisa bertanya langsung di Telegram (misal: *"Penjualan hari ini berapa?"*) dan mendapat jawaban singkat dari AI tanpa perlu membuka dashboard. |
+| 1 | **AI Chat Assistant (Streaming)** | Customer dapat bertanya langsung di halaman toko tentang produk pakaian, ketersediaan ukuran/warna, rekomendasi outfit. Jawaban AI di-stream secara real-time (SSE). |
+| 2 | **Pilih Laporan Otomatis** | Pengguna memilih jenis laporan dari menu dropdown yang mudah dipahami (bukan query SQL). Sistem langsung mengambil data dari PostgreSQL. |
+| 3 | **Auto-Visualisasi Cerdas** | AI mendeteksi tipe data dan secara otomatis memilih jenis chart yang paling tepat: Line Chart untuk data waktu, Funnel untuk tahapan, Pie/Bar untuk perbandingan kategori. |
+| 4 | **AI Insight Generator** | Setiap laporan disertai ringkasan teks 2-3 kalimat dalam Bahasa Indonesia yang menjelaskan tren utama dan apa artinya bagi bisnis. |
+| 5 | **Smart Anomaly Flagging** | AI mendeteksi penyimpangan signifikan (misal: penjualan turun >10% dari rata-rata) dan menandainya secara visual dengan ikon peringatan + penjelasan singkat. |
+| 6 | **Rekomendasi Actionable** | Selain menandai masalah, AI memberikan saran tindakan konkret (misal: *"Penjualan Kaos Polos turun 20% — pertimbangkan promosi atau cek stok ukuran populer."*) |
+| 7 | **Ekspor Laporan** | Pengguna dapat mengunduh tampilan dashboard sebagai PDF atau gambar untuk keperluan rapat. |
+| 8 | **Telegram Daily Summary** | n8n secara otomatis mengirimkan ringkasan penjualan harian setiap pukul **07.00** ke grup/chat Telegram tim yang dikonfigurasi. |
+| 9 | **Telegram Anomaly Alert** | Ketika anomali terdeteksi di data baru, n8n langsung mengirimkan pesan peringatan ke Telegram dalam < 15 menit. |
+| 10 | **Telegram Q&A Bot (Per-Role)** | Setiap role (sales, manager) bisa bertanya langsung di Telegram sesuai cakupan datanya. Sales hanya bisa akses data sendiri, manager bisa akses semua. |
 
 ---
 
@@ -186,36 +198,60 @@ graph TD
     classDef llm fill:#10a37f,stroke:#0d8265,stroke-width:2px,color:#fff;
     classDef telegram fill:#2ca5e0,stroke:#1a7aad,stroke-width:2px,color:#fff;
 
-    WebUser(["👤 Pengguna Web\n(Manajer / Eksekutif)"]):::user
-    TGUser(["👤 Tim Penjualan\n(Via Telegram)"]):::user
+    Customer(["👤 Customer\n(Pembeli Pakaian)"]):::user
+    WebUser(["👤 Admin / Manajer / Sales\n(Pengguna Internal)"]):::user
+    TGUser(["👤 Sales & Manajer\n(Via Telegram - Per Role)"]):::user
 
-    WebUser -->|"HTTPS — Login, Pilih Laporan"| NX["⬛ Next.js\nFrontend UI"]:::frontend
+    Customer -->|"Chat AI Streaming (SSE)\nTanya produk, ukuran, rekomendasi"| NX["⬛ Next.js\nFrontend UI\n(Toko + Admin + Dashboard)"]:::frontend
+    WebUser -->|"HTTPS — Login, Kelola Toko"| NX
     NX -->|"REST API + JWT"| GO["🔵 Golang\nCore Backend API"]:::backend
 
     GO <-->|"SQL Query\n(READ-ONLY untuk Dashboard)"| PG[("🐘 PostgreSQL\nDatabase Utama")]:::db
 
     GO -->|"POST Webhook\nData Aggregat + Context"| N8N["🔴 n8n\nAI Workflow Orchestrator"]:::n8n
+    GO -->|"SSE Stream\n(Chat AI Response)"| NX
     N8N <-->|"API Call\nPrompt + Data"| LLM{"🤖 LLM Service\nOpenAI / Gemini"}:::llm
     N8N -->|"JSON Response\nChartType + Insight + Flags"| GO
     GO -->|"Final JSON Response"| NX
 
-    N8N -->|"sendMessage\n(Scheduled / Alert)"| TG["✈️ Telegram Bot API\nMonitoring Assistant"]:::telegram
-    TGUser -->|"Kirim Pertanyaan\n'Penjualan hari ini?'"| TG
-    TG -->|"Webhook POST\n(User Message + chat_id)"| N8N
-    N8N -->|"sendMessage\n(Jawaban AI)"| TG
+    N8N -->|"sendMessage\n(Scheduled 07.00 / Alert)"| TG["✈️ Telegram Bot API\nMonitoring Assistant"]:::telegram
+    TGUser -->|"Kirim Pertanyaan\n(Sesuai Role Masing-masing)"| TG
+    TG -->|"Webhook POST\n(User Message + chat_id + role)"| N8N
+    N8N -->|"sendMessage\n(Jawaban AI sesuai scope role)"| TG
     TG -->|"Pesan Balasan"| TGUser
 ```
 
 ### 8.2 Penjelasan Alur Data
 
+**Alur A — Customer AI Chat (Streaming):**
 ```
-[Pengguna Web]
+[Customer di Halaman Toko]
+    │ Ketik pertanyaan di chat widget
+    ▼
+[Next.js] ──REST API──▶ [Golang]
+                              │ Query katalog produk dari PostgreSQL
+                              │ Susun context produk (stok, ukuran, warna)
+                              ▼
+                         [n8n Webhook]
+                              │ Susun prompt LLM + data katalog
+                              ▼
+                         [LLM Service]
+                              │ Stream response token by token
+                              ▼
+[Golang] ◀──SSE Stream── [n8n]
+    │ Forward stream ke client
+    ▼
+[Next.js] ── Tampilkan jawaban AI secara real-time ──▶ [Customer]
+```
+
+**Alur B — Dashboard Analitik (Internal):**
+```
+[Pengguna Internal]
     │ Pilih Laporan (klik dropdown)
     ▼
 [Next.js] ──REST API──▶ [Golang]
                               │ Query SQL aggregasi ke PostgreSQL
                               │ (Ambil data, hitung total, min, max, rata-rata)
-                              │
                               ▼
                          [n8n Webhook]
                               │ Susun prompt LLM + kirim data aggregat
@@ -229,7 +265,7 @@ graph TD
 [Golang] ◀──JSON Response── [n8n]
     │ Gabungkan data point + AI config
     ▼
-[Next.js] ── Render Chart + Teks Insight + Flag Anomali ──▶ [Pengguna Web]
+[Next.js] ── Render Chart + Teks Insight + Flag Anomali ──▶ [Pengguna Internal]
 ```
 
 ### 8.3 Deployment Overview
@@ -259,13 +295,14 @@ graph LR
 ```sql
 -- Tabel pengguna aplikasi InsightFlow
 CREATE TABLE app.users (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    nama        VARCHAR(100) NOT NULL,
-    email       VARCHAR(150) UNIQUE NOT NULL,
-    password    VARCHAR(255) NOT NULL,  -- bcrypt hash
-    role        VARCHAR(50) NOT NULL,   -- 'admin', 'manager', 'viewer'
-    aktif       BOOLEAN DEFAULT TRUE,
-    created_at  TIMESTAMP DEFAULT NOW()
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    nama            VARCHAR(100) NOT NULL,
+    email           VARCHAR(150) UNIQUE NOT NULL,
+    password        VARCHAR(255) NOT NULL,  -- bcrypt hash
+    role            VARCHAR(50) NOT NULL,   -- 'admin', 'manager', 'sales', 'viewer'
+    telegram_user_id BIGINT UNIQUE,          -- Mapping ke Telegram untuk Q&A per-role
+    aktif           BOOLEAN DEFAULT TRUE,
+    created_at      TIMESTAMP DEFAULT NOW()
 );
 
 -- Konfigurasi Telegram per grup/divisi
@@ -274,7 +311,7 @@ CREATE TABLE app.telegram_config (
     nama_grup   VARCHAR(100) NOT NULL,
     chat_id     BIGINT UNIQUE NOT NULL,  -- Telegram chat_id
     aktif       BOOLEAN DEFAULT TRUE,
-    jam_summary TIME DEFAULT '08:00',   -- Jam pengiriman daily summary
+    jam_summary TIME DEFAULT '07:00',   -- Jam pengiriman daily summary (07.00)
     threshold   DECIMAL(5,2) DEFAULT 10.00  -- % threshold anomali
 );
 
@@ -291,15 +328,18 @@ CREATE TABLE app.saved_dashboards (
 ### 9.3 Schema `bisnis` — Data Transaksi Penjualan
 
 ```sql
--- Master produk
+-- Master produk pakaian
 CREATE TABLE bisnis.tbl_produk (
-    id          SERIAL PRIMARY KEY,
-    kode_produk VARCHAR(50) UNIQUE NOT NULL,
-    nama        VARCHAR(200) NOT NULL,
-    harga       DECIMAL(15,2) NOT NULL,
-    stok        INTEGER DEFAULT 0,
-    kategori    VARCHAR(100),
-    aktif       BOOLEAN DEFAULT TRUE
+    id              SERIAL PRIMARY KEY,
+    kode_produk     VARCHAR(50) UNIQUE NOT NULL,
+    nama            VARCHAR(200) NOT NULL,
+    kategori_pakaian VARCHAR(100),           -- 'atasan', 'bawahan', 'dress', 'outerwear', 'aksesoris'
+    ukuran          VARCHAR(20),             -- 'S', 'M', 'L', 'XL', 'XXL', 'All Size'
+    warna           VARCHAR(50),             -- 'Hitam', 'Putih', 'Merah', dll
+    bahan           VARCHAR(100),            -- 'Katun', 'Polyester', 'Denim', dll
+    harga           DECIMAL(15,2) NOT NULL,
+    stok            INTEGER DEFAULT 0,
+    aktif           BOOLEAN DEFAULT TRUE
 );
 
 -- Master customer
@@ -360,13 +400,31 @@ CREATE TABLE bisnis.tbl_pengiriman (
 
 ## 10. User Flow Lengkap
 
-### 10.1 Alur Pembelian Barang oleh Customer
+### 10.1 Alur AI Chat Assistant — Customer di Halaman Toko
+
+*Customer bertanya langsung di halaman depan toko, AI menjawab secara streaming.*
+
+```mermaid
+flowchart TD
+    A(["👤 Customer\nBuka Halaman Toko"]) --> B["Lihat Katalog Pakaian\n(Produk, Harga, Foto)"]
+    B --> C["Klik Ikon Chat AI\ndi Pojok Kanan Bawah"]
+    C --> D["Ketik Pertanyaan\n(misal: 'Ada kaos polos warna hitam ukuran L?')"]
+    D --> E["Golang menerima pesan\n& query data produk dari PostgreSQL"]
+    E --> F["Data + pertanyaan dikirim\nke n8n → LLM"]
+    F --> G["LLM menghasilkan jawaban\n(stream token by token via SSE)"]
+    G --> H["✅ Customer menerima jawaban\nreal-time di chat widget\n(misal: 'Ya, tersedia! Stok 15 pcs.\nHarga Rp 89.000. Bahan katun combed 30s.')"]
+    H --> I{"Customer\ningin order?"}
+    I -->|Ya| J["Arahkan ke\nhalaman order"]
+    I -->|Tidak| K["Lanjut tanya\natau tutup chat"]
+```
+
+### 10.2 Alur Pembelian Pakaian oleh Customer
 
 *Proses ini menghasilkan data yang akan dibaca oleh dashboard.*
 
 ```mermaid
 flowchart TD
-    A(["👤 Customer"]) --> B["Pilih Produk\ndari Katalog"]
+    A(["👤 Customer"]) --> B["Pilih Produk Pakaian\ndari Katalog\n(Pilih ukuran & warna)"]
     B --> C["Tambah ke Order\n(Isi qty)"]
     C --> D{"Stok\nCukup?"}
     D -->|Tidak| E["❌ Notifikasi:\nStok Tidak Cukup"]
@@ -382,21 +440,21 @@ flowchart TD
     M --> N(["✅ Transaksi Selesai\nData lengkap di DB\nSiap dibaca Dashboard"])
 ```
 
-### 10.2 Alur Manajemen Data Master (CRUD)
+### 10.3 Alur Manajemen Data Master (CRUD)
 
 *Dilakukan oleh Admin/Sales sebelum transaksi bisa berjalan.*
 
 ```mermaid
 flowchart LR
     Admin(["👤 Admin/Sales\nLogin"]) --> Menu["Pilih Menu\nMaster Data"]
-    Menu --> MP["📦 Kelola Produk\n(Tambah/Edit/Hapus/Lihat)"]
+    Menu --> MP["👗 Kelola Produk Pakaian\n(Nama/Ukuran/Warna/Bahan/Harga/Stok)"]
     Menu --> MC["👥 Kelola Customer\n(Tambah/Edit/Hapus/Lihat)"]
-    Menu --> MU["👤 Kelola User/Sales\n(Tambah/Edit/Non-aktifkan)"]
+    Menu --> MU["👤 Kelola User/Sales\n(Tambah/Edit/Non-aktifkan/Set Role)"]
 
     MP & MC & MU -->|"Simpan Perubahan"| PG[("🗄️ PostgreSQL\ntbl_produk\ntbl_customer\napp.users")]
 ```
 
-### 10.3 Alur Utama — Web Dashboard (Self-Service AI)
+### 10.4 Alur Utama — Web Dashboard (Self-Service AI)
 
 *Pengguna melihat laporan dan insight AI dari data yang sudah ada di database.*
 
@@ -425,19 +483,19 @@ flowchart TD
     O -->|Tidak| Q["Lihat Laporan Lain\natau Logout"]
 ```
 
-### 10.4 Alur Telegram — Daily Summary (Otomatis Terjadwal)
+### 10.5 Alur Telegram — Daily Summary (Otomatis Terjadwal)
 
 ```mermaid
 flowchart TD
-    A(["⏰ n8n Scheduler\nAktif Pukul 08.00"]) --> B["Query Aggregasi\nPenjualan 24 Jam Terakhir\ndari PostgreSQL"]
-    B --> C["Kirim Data ke LLM:\n'Buat ringkasan penjualan\nharian yang singkat'"]
+    A(["⏰ n8n Scheduler\nAktif Pukul 07.00"]) --> B["Query Aggregasi\nPenjualan Pakaian 24 Jam Terakhir\ndari PostgreSQL"]
+    B --> C["Kirim Data ke LLM:\n'Buat ringkasan penjualan\npakaian harian yang singkat'"]
     C --> D["LLM menghasilkan\nTeks Ringkasan Harian"]
     D --> E["n8n format pesan\nTelegram-friendly"]
     E --> F["sendMessage ke\nGrup Telegram yang dikonfigurasi"]
-    F --> G(["📊 Manajer menerima\nRingkasan Penjualan\ndi Telegram"])
+    F --> G(["📊 Manajer & Sales menerima\nRingkasan Penjualan Pakaian\ndi Telegram"])
 ```
 
-### 10.5 Alur Telegram — Anomaly Alert (Real-time)
+### 10.6 Alur Telegram — Anomaly Alert (Real-time)
 
 ```mermaid
 flowchart TD
@@ -450,20 +508,26 @@ flowchart TD
     G --> H(["⚠️ Manajer menerima Alert:\n'Penjualan turun 20%\ndari rata-rata kemarin.\nRekomendasi: ...'"])
 ```
 
-### 10.6 Alur Telegram — Q&A Interaktif (User-Initiated)
+### 10.7 Alur Telegram — Q&A Interaktif Per-Role (User-Initiated)
 
 ```mermaid
 flowchart TD
-    A(["👤 Manajer\nKirim Pesan di Telegram:\n'Penjualan hari ini?'"]) --> B["Telegram API\nterima pesan"]
+    A(["👤 Sales/Manajer\nKirim Pesan di Telegram:\n'Penjualan saya hari ini?'"]) --> B["Telegram API\nterima pesan"]
     B --> C["Webhook POST\nke n8n"]
-    C --> D["n8n parse pesan:\nIdentifikasi intent"]
-    D --> E{"Pertanyaan\ntentang data bisnis?"}
-    E -->|Tidak| F["Balas: 'Maaf, saya hanya\nbisa menjawab pertanyaan\nseputar data penjualan.'"]
-    E -->|Ya| G["n8n Query\nPostgreSQL\nsesuai intent"]
-    G --> H["Kirim data ke LLM:\n'Jawab pertanyaan ini\nberdasarkan data'"]
-    H --> I["LLM hasilkan\nJawaban Singkat & Kontekstual"]
-    I --> J["sendMessage\nke chat_id pengguna"]
-    J --> K(["✅ Manajer menerima:\n'Total penjualan hari ini:\nRp 1,2 M (↑8% vs kemarin)'"])
+    C --> D["n8n identifikasi pengirim:\nCocokkan telegram_user_id\ndengan app.users"]
+    D --> E{"User\nterdaftar?"}
+    E -->|Tidak| F1["Balas: 'Maaf, akun Anda\nbelum terdaftar di sistem.'"]
+    E -->|Ya| F["n8n parse pesan:\nIdentifikasi intent + role"]
+    F --> G{"Pertanyaan\ntentang data bisnis?"}
+    G -->|Tidak| H["Balas: 'Maaf, saya hanya\nbisa menjawab pertanyaan\nseputar data penjualan.'"]
+    G -->|Ya| I{"Cek scope\nberdasarkan role"}
+    I -->|Sales| J["Query data\nMILIK SALES ITU SAJA"]
+    I -->|Manager| K["Query data\nSEMUA TIM"]
+    J & K --> L["Kirim data ke LLM:\n'Jawab pertanyaan ini\nberdasarkan data'"]
+    L --> M["LLM hasilkan\nJawaban Singkat & Kontekstual"]
+    M --> N["sendMessage\nke chat_id pengguna"]
+    N --> O(["✅ Pengguna menerima jawaban\nsesuai cakupan role-nya"])
+```
 ```
 
 ---
@@ -477,16 +541,17 @@ flowchart TD
 
 | No | Modul | Fitur | Prioritas |
 |---|---|---|---|
-| 1 | **Autentikasi** | Login dengan email & password, role-based access | 🔴 Critical |
-| 2 | **Master Data** | CRUD Produk, Customer, User/Sales | 🔴 Critical |
+| 1 | **Autentikasi** | Login dengan email & password, role-based access (`admin`, `manager`, `sales`, `viewer`) | 🔴 Critical |
+| 2 | **Master Data** | CRUD Produk Pakaian (ukuran/warna/bahan), Customer, User/Sales | 🔴 Critical |
 | 3 | **Transaksi** | Input order, konfirmasi, pembayaran, pengiriman | 🔴 Critical |
-| 4 | **Dashboard** | Pilih laporan via dropdown, tampil chart otomatis | 🔴 Critical |
-| 5 | **AI Insight** | Ringkasan teks otomatis per laporan | 🔴 Critical |
-| 6 | **Anomaly Flag** | Deteksi & tampilkan visual anomali + rekomendasi | 🟠 High |
-| 7 | **Export** | Download laporan sebagai PDF / Gambar | 🟡 Medium |
-| 8 | **Telegram Daily** | Kirim ringkasan penjualan terjadwal tiap pagi | 🟠 High |
-| 9 | **Telegram Alert** | Notifikasi anomali real-time ke Telegram | 🟠 High |
-| 10 | **Telegram Q&A** | Bot menjawab pertanyaan data bisnis via chat | 🟡 Medium |
+| 4 | **AI Chat Assistant** | Chat streaming (SSE) di halaman toko untuk customer: tanya produk, rekomendasi, cek stok | 🔴 Critical |
+| 5 | **Dashboard** | Pilih laporan via dropdown, tampil chart otomatis | 🔴 Critical |
+| 6 | **AI Insight** | Ringkasan teks otomatis per laporan | 🔴 Critical |
+| 7 | **Anomaly Flag** | Deteksi & tampilkan visual anomali + rekomendasi | 🟠 High |
+| 8 | **Export** | Download laporan sebagai PDF / Gambar | 🟡 Medium |
+| 9 | **Telegram Daily** | Kirim ringkasan penjualan terjadwal tiap pagi pukul 07.00 | 🟠 High |
+| 10 | **Telegram Alert** | Notifikasi anomali real-time ke Telegram | 🟠 High |
+| 11 | **Telegram Q&A** | Bot per-role menjawab pertanyaan data bisnis via chat sesuai cakupan role | 🟡 Medium |
 
 ### 11.2 Out-of-Scope (Tidak Masuk MVP)
 
@@ -510,7 +575,7 @@ flowchart TD
 |---|---|
 | F-AUTH-01 | Sistem menyediakan halaman login dengan form email dan password |
 | F-AUTH-02 | Sistem memvalidasi kredensial dan mengembalikan JWT token |
-| F-AUTH-03 | Sistem membedakan hak akses berdasarkan role: `admin`, `manager`, `viewer` |
+| F-AUTH-03 | Sistem membedakan hak akses berdasarkan role: `admin`, `manager`, `sales`, `viewer` |
 | F-AUTH-04 | Sistem memblokir akses ke semua endpoint tanpa token valid |
 | F-AUTH-05 | Sistem menyediakan fungsi logout yang menginvalidasi sesi |
 
@@ -518,11 +583,12 @@ flowchart TD
 
 | ID | Kebutuhan |
 |---|---|
-| F-MASTER-01 | Admin dapat menambah, mengedit, menonaktifkan, dan melihat data Produk |
+| F-MASTER-01 | Admin dapat menambah, mengedit, menonaktifkan, dan melihat data Produk Pakaian (nama, kategori, ukuran, warna, bahan, harga, stok) |
 | F-MASTER-02 | Admin dapat menambah, mengedit, dan melihat data Customer |
-| F-MASTER-03 | Admin dapat menambah dan menonaktifkan User/Sales |
-| F-MASTER-04 | Semua perubahan data master tersimpan ke PostgreSQL dengan timestamp |
-| F-MASTER-05 | Produk yang dinonaktifkan tidak bisa dipilih saat input order baru |
+| F-MASTER-03 | Admin dapat menambah, menonaktifkan, dan mengatur role User/Sales |
+| F-MASTER-04 | Admin dapat mengisi `telegram_user_id` pada profil user untuk mengaktifkan akses Telegram per-role |
+| F-MASTER-05 | Semua perubahan data master tersimpan ke PostgreSQL dengan timestamp |
+| F-MASTER-06 | Produk yang dinonaktifkan tidak bisa dipilih saat input order baru |
 
 ### 12.3 Modul Transaksi Penjualan
 
@@ -536,7 +602,19 @@ flowchart TD
 | F-TRX-06 | Sales dapat menandai order sebagai selesai (`closed`) |
 | F-TRX-07 | Order dapat dibatalkan (`cancelled`) oleh admin/sales dengan alasan |
 
-### 12.4 Modul Dashboard Self-Service
+### 12.4 Modul AI Chat Assistant (Customer)
+
+| ID | Kebutuhan |
+|---|---|
+| F-CHAT-01 | Halaman toko menampilkan widget chat AI di pojok kanan bawah yang dapat dibuka oleh customer |
+| F-CHAT-02 | Customer dapat mengetik pertanyaan dalam Bahasa Indonesia tentang produk pakaian |
+| F-CHAT-03 | Sistem mengambil data produk relevan dari PostgreSQL berdasarkan intent pertanyaan |
+| F-CHAT-04 | Jawaban AI di-stream secara real-time menggunakan Server-Sent Events (SSE) |
+| F-CHAT-05 | AI dapat menjawab tentang: ketersediaan stok, ukuran, warna, bahan, harga, dan rekomendasi outfit |
+| F-CHAT-06 | AI menolak pertanyaan di luar konteks produk/toko dengan pesan yang ramah |
+| F-CHAT-07 | Chat tidak memerlukan login (akses publik) |
+
+### 12.5 Modul Dashboard Self-Service
 
 | ID | Kebutuhan |
 |---|---|
@@ -550,16 +628,18 @@ flowchart TD
 | F-DASH-08 | Anomali ditampilkan dengan ikon ⚠️ + teks penjelasan + rekomendasi tindakan |
 | F-DASH-09 | Pengguna dapat mengunduh tampilan dashboard sebagai PDF atau gambar |
 
-### 12.5 Modul Telegram Bot
+### 12.6 Modul Telegram Bot (Per-Role)
 
 | ID | Kebutuhan |
 |---|---|
-| F-TG-01 | n8n mengirimkan ringkasan penjualan harian ke grup Telegram terkonfigurasi setiap pukul 08.00 |
+| F-TG-01 | n8n mengirimkan ringkasan penjualan harian ke grup Telegram terkonfigurasi setiap pukul **07.00** |
 | F-TG-02 | n8n mendeteksi anomali pada data terbaru dan mengirimkan alert ke Telegram dalam < 15 menit |
 | F-TG-03 | Pesan alert berisi: nama metrik, nilai aktual, nilai ekspektasi, dan 1 rekomendasi |
-| F-TG-04 | Bot menerima pesan dari pengguna dan merespons pertanyaan seputar data penjualan |
-| F-TG-05 | Bot menolak pertanyaan di luar konteks data bisnis dengan pesan yang ramah |
-| F-TG-06 | Admin dapat mengonfigurasi chat_id grup, jam daily summary, dan threshold anomali melalui halaman Settings |
+| F-TG-04 | Bot menerima pesan dari pengguna dan mengidentifikasi role berdasarkan `telegram_user_id` di `app.users` |
+| F-TG-05 | Bot membatasi scope data yang bisa ditanya sesuai role: `sales` hanya data sendiri, `manager` semua data |
+| F-TG-06 | Bot menolak pertanyaan di luar konteks data bisnis dengan pesan yang ramah |
+| F-TG-07 | Bot tidak merespons pesan dari `telegram_user_id` yang tidak terdaftar |
+| F-TG-08 | Admin dapat mengonfigurasi chat_id grup, jam daily summary, dan threshold anomali melalui halaman Settings |
 
 ---
 
@@ -584,44 +664,55 @@ flowchart TD
 
 ## 14. User Stories
 
-### 14.1 Kelompok: Admin Sistem
+### 14.1 Kelompok: Customer (Pembeli)
 
 | ID | User Story |
 |---|---|
-| US-01 | **Sebagai Admin**, saya ingin dapat menambahkan produk baru ke sistem agar produk tersebut bisa dimasukkan ke dalam order penjualan. |
-| US-02 | **Sebagai Admin**, saya ingin mengedit harga dan stok produk agar data yang digunakan dalam transaksi selalu akurat. |
-| US-03 | **Sebagai Admin**, saya ingin menonaktifkan produk yang tidak lagi dijual agar tidak muncul di pilihan order. |
-| US-04 | **Sebagai Admin**, saya ingin mengelola data customer (tambah/edit) agar informasi pembeli tersimpan dengan lengkap. |
-| US-05 | **Sebagai Admin**, saya ingin menambah dan menonaktifkan akun Sales agar hak akses tim selalu terkelola dengan baik. |
-| US-06 | **Sebagai Admin**, saya ingin mengonfigurasi grup Telegram dan jam pengiriman daily summary agar bot berjalan sesuai kebutuhan tim. |
+| US-01 | **Sebagai Customer**, saya ingin bisa bertanya langsung di halaman toko tentang ketersediaan ukuran dan warna pakaian agar saya tidak perlu menghubungi sales secara manual. |
+| US-02 | **Sebagai Customer**, saya ingin mendapat rekomendasi outfit dari AI berdasarkan produk yang saya lihat agar saya lebih mudah memilih. |
+| US-03 | **Sebagai Customer**, saya ingin jawaban AI muncul secara real-time (streaming) agar pengalaman chat terasa responsif dan alami. |
 
-### 14.2 Kelompok: Sales / Staff Operasional
+### 14.2 Kelompok: Admin Sistem
 
 | ID | User Story |
 |---|---|
-| US-07 | **Sebagai Sales**, saya ingin membuat order baru untuk customer dengan memilih produk dari daftar agar proses pemesanan cepat dan tidak butuh hafal kode produk. |
-| US-08 | **Sebagai Sales**, saya ingin dikonfirmasi oleh sistem jika stok produk tidak cukup sebelum order disubmit agar tidak ada order yang tidak bisa dipenuhi. |
-| US-09 | **Sebagai Sales**, saya ingin mencatat pembayaran customer dan mengubah status order agar alur transaksi tercatat lengkap di sistem. |
-| US-10 | **Sebagai Sales**, saya ingin mencatat nomor resi pengiriman agar status pengiriman bisa dilacak. |
+| US-04 | **Sebagai Admin**, saya ingin dapat menambahkan produk pakaian baru (dengan ukuran, warna, bahan) ke sistem agar produk tersebut bisa dimasukkan ke dalam order penjualan. |
+| US-05 | **Sebagai Admin**, saya ingin mengedit harga dan stok produk pakaian agar data yang digunakan dalam transaksi selalu akurat. |
+| US-06 | **Sebagai Admin**, saya ingin menonaktifkan produk yang tidak lagi dijual agar tidak muncul di pilihan order. |
+| US-07 | **Sebagai Admin**, saya ingin mengelola data customer (tambah/edit) agar informasi pembeli tersimpan dengan lengkap. |
+| US-08 | **Sebagai Admin**, saya ingin menambah dan menonaktifkan akun Sales serta mengatur role-nya agar hak akses tim selalu terkelola dengan baik. |
+| US-09 | **Sebagai Admin**, saya ingin mengisi telegram_user_id pada profil user agar setiap user bisa mengakses data via Telegram sesuai role-nya. |
+| US-10 | **Sebagai Admin**, saya ingin mengonfigurasi grup Telegram dan jam pengiriman daily summary (default 07.00) agar bot berjalan sesuai kebutuhan tim. |
 
-### 14.3 Kelompok: Manajer Penjualan
-
-| ID | User Story |
-|---|---|
-| US-11 | **Sebagai Manajer**, saya ingin membuka dashboard dan memilih "Laporan Penjualan Harian" dari menu dropdown agar saya bisa langsung melihat performa tanpa perlu tahu cara query data. |
-| US-12 | **Sebagai Manajer**, saya ingin sistem secara otomatis menampilkan jenis grafik yang paling tepat sesuai data agar saya tidak salah menginterpretasikan informasi. |
-| US-13 | **Sebagai Manajer**, saya ingin membaca ringkasan AI dalam Bahasa Indonesia di bawah setiap grafik agar saya bisa langsung mengerti tren tanpa harus menganalisis sendiri. |
-| US-14 | **Sebagai Manajer**, saya ingin melihat tanda peringatan ⚠️ jika ada penurunan penjualan signifikan agar saya bisa dengan cepat melihat masalah tanpa harus membaca semua angka. |
-| US-15 | **Sebagai Manajer**, saya ingin mendapat rekomendasi tindakan dari AI ketika ada anomali agar saya punya arahan awal dalam mengatasi masalah. |
-| US-16 | **Sebagai Manajer**, saya ingin mengunduh hasil laporan sebagai PDF agar bisa saya bagikan langsung di rapat. |
-
-### 14.4 Kelompok: Telegram Bot (Monitoring Penjualan)
+### 14.3 Kelompok: Sales / Staff Operasional
 
 | ID | User Story |
 |---|---|
-| US-17 | **Sebagai Manajer**, saya ingin menerima ringkasan penjualan harian setiap pagi di Telegram agar saya tahu kondisi bisnis bahkan sebelum membuka laptop. |
-| US-18 | **Sebagai Manajer**, saya ingin mendapat notifikasi otomatis di Telegram ketika ada penurunan penjualan signifikan agar saya bisa merespons masalah secara *real-time*. |
-| US-19 | **Sebagai Manajer**, saya ingin bisa bertanya di Telegram (misal: *"Produk apa yang paling laku minggu ini?"*) dan mendapat jawaban langsung dari AI agar informasi cepat bisa saya dapat tanpa harus login ke dashboard. |
+| US-11 | **Sebagai Sales**, saya ingin membuat order baru untuk customer dengan memilih produk pakaian (termasuk ukuran dan warna) dari daftar agar proses pemesanan cepat. |
+| US-12 | **Sebagai Sales**, saya ingin dikonfirmasi oleh sistem jika stok produk tidak cukup sebelum order disubmit agar tidak ada order yang tidak bisa dipenuhi. |
+| US-13 | **Sebagai Sales**, saya ingin mencatat pembayaran customer dan mengubah status order agar alur transaksi tercatat lengkap di sistem. |
+| US-14 | **Sebagai Sales**, saya ingin mencatat nomor resi pengiriman agar status pengiriman bisa dilacak. |
+| US-15 | **Sebagai Sales**, saya ingin bertanya di Telegram tentang performa penjualan saya hari ini agar saya bisa memantau target tanpa buka dashboard. |
+
+### 14.4 Kelompok: Manajer Penjualan
+
+| ID | User Story |
+|---|---|
+| US-16 | **Sebagai Manajer**, saya ingin membuka dashboard dan memilih "Laporan Penjualan Harian" dari menu dropdown agar saya bisa langsung melihat performa tanpa perlu tahu cara query data. |
+| US-17 | **Sebagai Manajer**, saya ingin sistem secara otomatis menampilkan jenis grafik yang paling tepat sesuai data agar saya tidak salah menginterpretasikan informasi. |
+| US-18 | **Sebagai Manajer**, saya ingin membaca ringkasan AI dalam Bahasa Indonesia di bawah setiap grafik agar saya bisa langsung mengerti tren tanpa harus menganalisis sendiri. |
+| US-19 | **Sebagai Manajer**, saya ingin melihat tanda peringatan ⚠️ jika ada penurunan penjualan signifikan agar saya bisa dengan cepat melihat masalah tanpa harus membaca semua angka. |
+| US-20 | **Sebagai Manajer**, saya ingin mendapat rekomendasi tindakan dari AI ketika ada anomali agar saya punya arahan awal dalam mengatasi masalah. |
+| US-21 | **Sebagai Manajer**, saya ingin mengunduh hasil laporan sebagai PDF agar bisa saya bagikan langsung di rapat. |
+
+### 14.5 Kelompok: Telegram Bot (Monitoring Penjualan Per-Role)
+
+| ID | User Story |
+|---|---|
+| US-22 | **Sebagai Manajer**, saya ingin menerima ringkasan penjualan harian setiap pukul 07.00 di Telegram agar saya tahu kondisi bisnis bahkan sebelum membuka laptop. |
+| US-23 | **Sebagai Manajer**, saya ingin mendapat notifikasi otomatis di Telegram ketika ada penurunan penjualan signifikan agar saya bisa merespons masalah secara *real-time*. |
+| US-24 | **Sebagai Manajer**, saya ingin bisa bertanya di Telegram (misal: *"Total penjualan semua sales minggu ini?"*) dan mendapat jawaban dari seluruh data tim. |
+| US-25 | **Sebagai Sales**, saya ingin bisa bertanya di Telegram (misal: *"Penjualan saya hari ini berapa?"*) dan mendapat jawaban hanya dari data penjualan saya sendiri. |
 
 ---
 
@@ -636,17 +727,25 @@ flowchart TD
 
 ### 15.2 Modul Master Data
 
-- [ ] Admin dapat menambah produk baru; produk langsung muncul di dropdown order baru.
+- [ ] Admin dapat menambah produk pakaian baru dengan field: nama, kategori, ukuran, warna, bahan, harga, stok; produk langsung muncul di dropdown order baru.
 - [ ] Produk yang dinonaktifkan tidak muncul di pilihan order baru.
-- [ ] Semua field wajib (nama produk, harga) divalidasi — tidak boleh kosong.
+- [ ] Semua field wajib (nama produk, harga, kategori_pakaian) divalidasi — tidak boleh kosong.
 
-### 15.3 Modul Transaksi
+### 15.3 Modul AI Chat Assistant
+
+- [ ] Widget chat muncul di halaman toko dan bisa dibuka tanpa login.
+- [ ] Customer mengetik pertanyaan dan respons mulai streaming dalam ≤ 3 detik.
+- [ ] AI menjawab dengan benar tentang ketersediaan produk berdasarkan data aktual di database.
+- [ ] Pertanyaan di luar konteks produk mendapat balasan ramah yang mengarahkan kembali.
+- [ ] Chat berfungsi lancar pada browser Chrome, Firefox, dan Edge versi terbaru.
+
+### 15.4 Modul Transaksi
 
 - [ ] Saat order dibuat dengan produk yang stoknya 0, sistem menampilkan error dan TIDAK menyimpan order.
 - [ ] Setiap perubahan status order (pending → confirmed → paid → shipped → closed) tersimpan dengan timestamp.
 - [ ] Data pembayaran yang berhasil dikonfirmasi langsung mengubah status order menjadi `paid`.
 
-### 15.4 Modul Dashboard
+### 15.5 Modul Dashboard
 
 - [ ] Pengguna dapat memilih laporan dari dropdown dan melihat chart dalam ≤ 3 klik dari halaman utama.
 - [ ] Untuk data *time-series* (penjualan per hari/minggu/bulan) → sistem memilih **Line Chart**.
@@ -657,14 +756,16 @@ flowchart TD
 - [ ] Tombol "Download PDF" mengunduh file PDF yang berisi chart + insight dalam ≤ 5 detik.
 - [ ] Pengguna non-teknis tanpa pengalaman BI dapat menggunakan dashboard dari login hingga membaca insight dalam **≤ 5 menit**.
 
-### 15.5 Modul Telegram Bot
+### 15.6 Modul Telegram Bot
 
-- [ ] Daily summary dikirim tepat pukul 08.00 (±2 menit toleransi) ke grup yang dikonfigurasi.
+- [ ] Daily summary dikirim tepat pukul **07.00** (±2 menit toleransi) ke grup yang dikonfigurasi.
 - [ ] Alert anomali dikirim dalam **≤ 15 menit** setelah data anomali terdeteksi.
 - [ ] Format pesan alert: `⚠️ [Nama Metrik]: [Nilai Aktual] vs [Ekspektasi]. Rekomendasi: [teks]`.
+- [ ] Bot mengidentifikasi pengirim berdasarkan `telegram_user_id` dan menentukan scope data sesuai role.
+- [ ] Sales hanya mendapat jawaban dari data miliknya sendiri; Manager mendapat jawaban dari semua data tim.
 - [ ] Bot merespons pertanyaan dalam **≤ 10 detik**.
 - [ ] Pertanyaan di luar topik data bisnis mendapat balasan: *"Maaf, saya hanya bisa menjawab pertanyaan seputar data penjualan kami."*
-- [ ] Bot tidak merespons pesan dari chat_id yang tidak terdaftar di konfigurasi.
+- [ ] Bot tidak merespons pesan dari `telegram_user_id` yang tidak terdaftar di `app.users`.
 
 ---
 
@@ -699,16 +800,17 @@ flowchart TD
 
 ```mermaid
 gantt
-    title Roadmap InsightFlow MVP
+    title Roadmap InsightFlow MVP — Penjualan Pakaian
     dateFormat  YYYY-MM-DD
     section Fase 1 - Fondasi
     Setup Infrastruktur & DB      :f1a, 2026-05-01, 7d
-    Backend Golang API (Auth + CRUD) :f1b, after f1a, 14d
-    Frontend Next.js (Login + Master Data) :f1c, after f1a, 14d
+    Backend Golang API (Auth + CRUD Pakaian) :f1b, after f1a, 14d
+    Frontend Next.js (Login + Master Data + Halaman Toko) :f1c, after f1a, 14d
 
-    section Fase 2 - Transaksi
+    section Fase 2 - Transaksi & AI Chat
     Modul Transaksi (Order, Bayar, Kirim) :f2a, after f1b, 14d
     UI Transaksi di Frontend        :f2b, after f1c, 14d
+    AI Chat Assistant (SSE Streaming) :f2c, after f1b, 10d
 
     section Fase 3 - Dashboard AI
     Integrasi n8n + LLM (Workflow AI) :f3a, after f2a, 10d
@@ -716,7 +818,7 @@ gantt
     Anomaly Detection & Flagging     :f3c, after f3a, 7d
 
     section Fase 4 - Telegram & Polish
-    Telegram Bot (Daily + Alert + QnA) :f4a, after f3a, 10d
+    Telegram Bot Per-Role (Daily 07.00 + Alert + QnA) :f4a, after f3a, 10d
     Export PDF                         :f4b, after f3b, 5d
     UAT & Bug Fix                      :f4c, after f4a, 7d
     Go-Live                            :milestone, after f4c, 0d
@@ -726,10 +828,10 @@ gantt
 
 | Fase | Durasi | Output |
 |---|---|---|
-| **Fase 1 — Fondasi** | 2 Minggu | Setup server, DB schema, API autentikasi, CRUD master data |
-| **Fase 2 — Transaksi** | 2 Minggu | Input order, pembayaran, pengiriman, riwayat transaksi |
+| **Fase 1 — Fondasi** | 2 Minggu | Setup server, DB schema pakaian, API autentikasi, CRUD master data, halaman toko |
+| **Fase 2 — Transaksi & AI Chat** | 2 Minggu | Input order pakaian, pembayaran, pengiriman, AI Chat Assistant streaming di halaman toko |
 | **Fase 3 — Dashboard AI** | 2 Minggu | Laporan otomatis, chart, insight AI, anomaly detection |
-| **Fase 4 — Telegram & Polish** | 2 Minggu | Telegram Bot, export PDF, UAT, go-live |
+| **Fase 4 — Telegram & Polish** | 2 Minggu | Telegram Bot per-role (daily 07.00), export PDF, UAT, go-live |
 | **Total MVP** | **~8 Minggu** | Platform siap pakai end-to-end |
 
 ---
@@ -745,12 +847,13 @@ Sebuah fitur dinyatakan **selesai** jika memenuhi seluruh kriteria berikut:
 - [ ] Tidak ada *critical bug* yang belum terselesaikan
 
 ### Fungsional End-to-End
-- [ ] Pengguna dapat login, kelola data master, input transaksi, dan lihat dashboard dengan AI insight
+- [ ] Pengguna dapat login, kelola data master pakaian, input transaksi, dan lihat dashboard dengan AI insight
+- [ ] Customer dapat chat dengan AI Assistant di halaman toko dan mendapat jawaban streaming tentang produk pakaian
 - [ ] Anomali pada data ditandai secara visual di dashboard
 - [ ] n8n Workflow berhasil memanggil LLM dan mengembalikan konfigurasi chart + insight yang akurat
-- [ ] Telegram Bot mengirimkan daily summary terjadwal setiap pukul 08.00
+- [ ] Telegram Bot mengirimkan daily summary terjadwal setiap pukul 07.00
 - [ ] Telegram Bot mengirimkan alert anomali dalam < 15 menit setelah deteksi
-- [ ] Telegram Bot merespons pertanyaan pengguna dengan jawaban relevan dalam < 10 detik
+- [ ] Telegram Bot merespons pertanyaan pengguna sesuai scope role masing-masing dalam < 10 detik
 
 ### Kualitas & Ketersediaan
 - [ ] Seluruh alur utama telah melalui User Acceptance Testing (UAT) dengan minimal 3 pengguna non-teknis
