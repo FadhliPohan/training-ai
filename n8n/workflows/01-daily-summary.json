@@ -1,15 +1,6 @@
 {
-  "name": "InsightFlow — Daily Summary (07:00 WIB)",
   "nodes": [
     {
-      "id": "sched-001",
-      "name": "Scheduler 07:00 WIB",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
-      "position": [
-        240,
-        300
-      ],
       "parameters": {
         "rule": {
           "interval": [
@@ -19,20 +10,42 @@
             }
           ]
         }
-      }
+      },
+      "id": "00a915e2-49f8-4196-91f4-fa68e5f64579",
+      "name": "Scheduler 07:00 WIB",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -192,
+        -16
+      ]
     },
     {
-      "id": "http-001",
+      "parameters": {
+        "url": "http://host.docker.internal:3032/api/internal/reports/summary",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Internal-Key",
+              "value": "insightflow_internal_secret_key_change_in_production"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "85dee17f-0559-4029-9c71-75124e591a12",
       "name": "Get Summary Data",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        460,
-        300
-      ],
+        32,
+        -16
+      ]
+    },
+    {
       "parameters": {
-        "method": "GET",
-        "url": "http://localhost:8080/api/internal/reports/summary",
+        "url": "http://host.docker.internal:3032/api/internal/settings/telegram",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -42,168 +55,157 @@
             }
           ]
         },
-        "options": {
-          "timeout": 10000
-        }
-      }
-    },
-    {
-      "id": "http-settings",
+        "options": {}
+      },
+      "id": "18239e55-3546-4364-943d-18c1409ce5ca",
       "name": "Get Telegram Settings",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        680,
-        300
-      ],
-      "parameters": {
-        "method": "GET",
-        "url": "http://localhost:8080/api/internal/settings/telegram",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-Internal-Key",
-              "value": "insightflow_internal_secret_key_change_in_production"
-            }
-          ]
-        },
-        "options": {
-          "timeout": 5000
-        }
-      }
+        256,
+        -16
+      ]
     },
     {
-      "id": "code-001",
+      "parameters": {
+        "jsCode": "const d=$input.first().json.data;\nconst cfg=$('Get Telegram Settings').first().json.data;\nconst threshold=cfg?.anomaly_threshold_pct||10;\nconst fmt=n=>'Rp '+Number(n).toLocaleString('id-ID');\nconst t=d.revenue_vs_yesterday_pct>=0?`naik ${d.revenue_vs_yesterday_pct}%`:`turun ${Math.abs(d.revenue_vs_yesterday_pct)}%`;\nconst prompt=`Laporan penjualan ${d.day_of_week} ${d.date}:\n- Omzet: ${fmt(d.total_revenue)} (${t} vs kemarin)\n- Order: ${d.total_orders} (selesai:${d.completed_orders} pending:${d.pending_orders})\n- Produk terlaris: ${d.top_product} | Sales terbaik: ${d.top_sales}\n- Stok rendah: ${d.low_stock_count} produk\n${d.has_anomaly?'⚠️ Anomali: '+d.anomaly_msg:''}\n\nBuat ringkasan 3-4 kalimat Bahasa Indonesia informatif untuk manajer. Sertakan 1 saran.`;\nreturn [{json:{prompt,raw:d,chat_id:cfg?.chat_id||0,threshold}}];"
+      },
+      "id": "1c749afb-b77c-46e3-8d0a-011c08c8a078",
       "name": "Format Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        900,
-        300
-      ],
-      "parameters": {
-        "jsCode": "const d=$input.first().json.data;\nconst cfg=$('Get Telegram Settings').first().json.data;\nconst threshold=cfg?.anomaly_threshold_pct||10;\nconst fmt=n=>'Rp '+Number(n).toLocaleString('id-ID');\nconst t=d.revenue_vs_yesterday_pct>=0?`naik ${d.revenue_vs_yesterday_pct}%`:`turun ${Math.abs(d.revenue_vs_yesterday_pct)}%`;\nconst prompt=`Laporan penjualan ${d.day_of_week} ${d.date}:\n- Omzet: ${fmt(d.total_revenue)} (${t} vs kemarin)\n- Order: ${d.total_orders} (selesai:${d.completed_orders} pending:${d.pending_orders})\n- Produk terlaris: ${d.top_product} | Sales terbaik: ${d.top_sales}\n- Stok rendah: ${d.low_stock_count} produk\n${d.has_anomaly?'⚠️ Anomali: '+d.anomaly_msg:''}\n\nBuat ringkasan 3-4 kalimat Bahasa Indonesia informatif untuk manajer. Sertakan 1 saran.`;\nreturn [{json:{prompt,raw:d,chat_id:cfg?.chat_id||0,threshold}}];"
-      }
+        480,
+        -16
+      ]
     },
     {
-      "id": "code-002",
+      "parameters": {
+        "jsCode": "const aiText=$input.first().json.output||$input.first().json.message?.content||'';\nconst raw=$('Format Prompt').first().json.raw;\n\nconst fmt = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');\nconst trendIcon = raw.revenue_vs_yesterday_pct >= 0 ? '📈' : '📉';\nconst sign = raw.revenue_vs_yesterday_pct >= 0 ? '+' : '';\n\nconst lowStockLine = raw.low_stock_count > 0\n  ? `\\n⚠️ *Stok Rendah:* ${raw.low_stock_count} produk perlu restock`\n  : '';\n\nconst message = `📊 *Laporan Penjualan Harian*\n_${raw.day_of_week}, ${raw.date}_\n\n💰 Omzet: *${fmt(raw.total_revenue)}* ${trendIcon} ${sign}${raw.revenue_vs_yesterday_pct}%\n📦 Order: *${raw.total_orders}* total ✅${raw.completed_orders} ⏳${raw.pending_orders}\n🏆 Terlaris: *${raw.top_product}*\n👤 Sales Terbaik: *${raw.top_sales}*${lowStockLine}\n\n🤖 _${aiText}_\n\n_Dikirim otomatis pukul 07.00 WIB_`;\n\nreturn [{ json: { message } }];"
+      },
+      "id": "dcf904e2-a1da-43f6-b642-43c18dbd47ec",
       "name": "Format Telegram Message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1340,
-        300
-      ],
-      "parameters": {
-        "jsCode": "const aiText=$input.first().json.output||'';\nconst raw=$('Format Prompt').first().json.raw;\n\nconst fmt = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');\nconst trendIcon = raw.revenue_vs_yesterday_pct >= 0 ? '📈' : '📉';\nconst sign = raw.revenue_vs_yesterday_pct >= 0 ? '+' : '';\n\nconst lowStockLine = raw.low_stock_count > 0\n  ? `\\n⚠️ *Stok Rendah:* ${raw.low_stock_count} produk perlu restock`\n  : '';\n\nconst message = `📊 *Laporan Penjualan Harian*\n_${raw.day_of_week}, ${raw.date}_\n\n💰 Omzet: *${fmt(raw.total_revenue)}* ${trendIcon} ${sign}${raw.revenue_vs_yesterday_pct}%\n📦 Order: *${raw.total_orders}* total ✅${raw.completed_orders} ⏳${raw.pending_orders}\n🏆 Terlaris: *${raw.top_product}*\n👤 Sales Terbaik: *${raw.top_sales}*${lowStockLine}\n\n🤖 _${aiText}_\n\n_Dikirim otomatis pukul 07.00 WIB_`;\n\nreturn [{ json: { message } }];"
-      }
+        1040,
+        -16
+      ]
     },
     {
-      "id": "tg-001",
-      "name": "Send to Telegram",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        1560,
-        300
-      ],
-      "credentials": {
-        "telegramApi": {
-          "id": "2",
-          "name": "Telegram account"
-        }
-      },
       "parameters": {
-        "resource": "message",
-        "operation": "sendMessage",
         "chatId": "={{ $('Format Prompt').first().json.chat_id }}",
         "text": "={{ $json.message }}",
         "additionalFields": {
           "parse_mode": "Markdown"
         }
+      },
+      "id": "baa3afde-2085-4989-b4c5-c8b28ddbf9d9",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1264,
+        -16
+      ],
+      "webhookId": "68473274-7275-419b-90a9-670e510a0f75",
+      "credentials": {
+        "telegramApi": {
+          "id": "uZ29K6eoMtEL2vsR",
+          "name": "Telegram account"
+        }
       }
     },
     {
-      "id": "err-001",
+      "parameters": {},
+      "id": "7c63c956-05df-45c5-b87f-8f981adf4c83",
       "name": "Error Trigger",
       "type": "n8n-nodes-base.errorTrigger",
       "typeVersion": 1,
       "position": [
-        900,
-        500
-      ],
-      "parameters": {}
+        48,
+        176
+      ]
     },
     {
-      "id": "tg-err-001",
-      "name": "Send Error Alert",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        900,
-        500
-      ],
-      "credentials": {
-        "telegramApi": {
-          "id": "2",
-          "name": "Telegram account"
-        }
-      },
       "parameters": {
-        "resource": "message",
-        "operation": "sendMessage",
         "chatId": "={{ $('Format Prompt').first().json.chat_id || '-100123456789' }}",
         "text": "⚠️ *InsightFlow Alert*\nGagal mengirim laporan pagi ini.\nError: {{ $json.error.message }}\n\nSilakan cek dashboard manual: http://localhost:3000/dashboard",
         "additionalFields": {
           "parse_mode": "Markdown"
         }
-      }
-    },
-    {
-      "id": "lm-summary",
-      "name": "OpenAI Model (Summary)",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      },
+      "id": "4ba2e509-6cb2-408d-937c-ec8a85f152c7",
+      "name": "Send Error Alert",
+      "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        900,
-        440
+        256,
+        176
       ],
+      "webhookId": "699905cb-4763-4d61-8ad2-37e1687374ac",
       "credentials": {
-        "openAiApi": {
-          "id": "1",
-          "name": "OpenAI account"
-        }
-      },
-      "parameters": {
-        "model": {
-          "__rl": true,
-          "value": "gpt-4o-mini",
-          "mode": "list",
-          "cachedResultName": "gpt-4o-mini"
-        },
-        "options": {
-          "temperature": 0.5,
-          "maxTokens": 500
+        "telegramApi": {
+          "id": "uZ29K6eoMtEL2vsR",
+          "name": "Telegram account"
         }
       }
     },
     {
-      "id": "agent-summary",
-      "name": "Generate Summary AI",
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 3.1,
-      "position": [
-        900,
-        300
-      ],
       "parameters": {
         "promptType": "define",
-        "text": "={{ $json.prompt }}",
+        "text": "={{ $json.chat_id }}",
         "options": {
           "systemMessage": "Kamu adalah asisten laporan penjualan pakaian. Buat ringkasan laporan harian yang singkat, jelas, dan informatif dalam Bahasa Indonesia. Selalu sertakan angka dalam format Rupiah Indonesia."
         }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        704,
+        -16
+      ],
+      "id": "24d91dfb-1137-4cc1-8311-f0141fea4067",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        624,
+        192
+      ],
+      "id": "3360ad85-5cda-40a7-a5ef-9ecda562cdae",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "rilVCQteHFluoG2t",
+          "name": "OpenAI account"
+        }
       }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.chat_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        784,
+        192
+      ],
+      "id": "d5800879-4f3c-453e-a219-23f59e1d0afb",
+      "name": "Simple Memory"
     }
   ],
   "connections": {
@@ -229,22 +231,22 @@
         ]
       ]
     },
-    "Format Prompt": {
+    "Get Telegram Settings": {
       "main": [
         [
           {
-            "node": "Generate Summary AI",
+            "node": "Format Prompt",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Generate Summary AI": {
+    "Format Prompt": {
       "main": [
         [
           {
-            "node": "Format Telegram Message",
+            "node": "AI Agent",
             "type": "main",
             "index": 0
           }
@@ -273,41 +275,43 @@
         ]
       ]
     },
-    "Get Telegram Settings": {
+    "AI Agent": {
       "main": [
         [
           {
-            "node": "Format Prompt",
+            "node": "Format Telegram Message",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "OpenAI Model (Summary)": {
+    "OpenAI Chat Model": {
       "ai_languageModel": [
         [
           {
-            "node": "Generate Summary AI",
+            "node": "AI Agent",
             "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
             "index": 0
           }
         ]
       ]
     }
   },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "tags": [
-    {
-      "name": "insightflow"
-    }
-  ],
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "d55d9cc69ddc2354351d053a5423fd12f72f5ba734faff57519e359889a61a82"
-  },
-  "pinData": {}
+    "instanceId": "22108b0f31da3bae0244a72667f889eaedcf4087aa89585493d7505f517528bf"
+  }
 }
