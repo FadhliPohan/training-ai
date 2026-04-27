@@ -1,8 +1,8 @@
 # Sprint Task Planning — InsightFlow (Single Source of Truth)
 
 > **Dokumen sprint resmi (satu-satunya):** gunakan file ini untuk planning dan tracking progress.  
-> **Terakhir diperbarui:** 24 April 2026  
-> **Status saat ini:** Pre-Sprint 1 (backlog sinkron dengan backend + auto-migrate env policy aktif)
+> **Terakhir diperbarui:** 27 April 2026  
+> **Status saat ini:** Backend-first mode (frontend ditunda sampai seluruh scope backend aktif selesai)
 
 ---
 
@@ -71,11 +71,38 @@ Audit dilakukan langsung ke `be-penjualan/` pada 24 April 2026.
 
 ---
 
+## 3.1) Scope Fokus Aktif (Update 27 April 2026)
+
+Scope planning saat ini disesuaikan dengan keputusan tim:
+
+- Backend fokus utama: endpoint **read-only (GET)** untuk **dashboard ringkasan laporan**.
+- Data backend tahap ini: **dummy data / seeded data** (bukan full operasional transaksi).
+- Core delivery: orkestrasi **n8n + AI + Telegram** untuk summary/insight/notifikasi.
+- Item CRUD/transaksi/order flow **tetap dipertahankan** di backlog dokumen ini untuk fase lanjutan (tidak dihapus).
+
+Aturan eksekusi (backend-first lock):
+
+- Implementasi frontend **ditunda** sampai scope backend aktif dinyatakan selesai.
+- Semua kapasitas sprint diarahkan ke backend + integrasi n8n/AI/Telegram.
+- Review mingguan memprioritaskan progress backend, bukan UI/halaman frontend.
+
+Prioritas implementasi dekat:
+
+1. Siapkan dummy dataset untuk kebutuhan laporan dashboard.
+2. Stabilkan endpoint GET yang dibutuhkan dashboard/n8n (`/reports` dan ringkasan terkait).
+3. Aktifkan integrasi webhook backend ↔ n8n untuk dashboard summary dan Telegram.
+4. Implement workflow n8n prioritas (daily summary + dashboard insight + error handling).
+5. Telegram dipakai sebagai channel output notifikasi/ringkasan.
+6. AI Chat customer diposisikan sebagai backlog opsional setelah core summary stabil.
+7. Lanjutkan CRUD/transaksi saat fase operasional penuh dimulai.
+
+---
+
 ## 4) Sprint Backlog Terpadu
 
 ## Sprint 1 — Backend Foundation Hardening + Auth + Master Data Dasar
 
-**Goal:** backend siap dipakai frontend untuk auth dan master data inti.
+**Goal:** backend siap melayani dashboard ringkasan (read-only) berbasis dummy data, terhubung ke n8n/AI.
 
 ### A. Fondasi & stabilitas
 
@@ -87,31 +114,43 @@ Audit dilakukan langsung ke `be-penjualan/` pada 24 April 2026.
 - [ ] Seed manager + sales + customer dummy
 - [x] Perbaiki test agar tidak panic jika DB belum init
 
-### B. Auth module
+### B. Dashboard Read-Only Module (Prioritas Fokus Aktif)
+
+- [ ] `GET /reports` (read-only, sumber dummy data)
+- [ ] `GET /reports?type=&from=&to=` untuk kebutuhan visualisasi dashboard
+- [ ] Kontrak respons ringkasan: `summary`, `metrics`, `anomalies`, `recommendation`
+- [ ] Validasi parameter query laporan (whitelist `type`, format tanggal)
+- [ ] Latency target endpoint GET laporan untuk konsumsi n8n/dashboard
+
+### C. Integrasi n8n + Telegram (Prioritas Fokus Aktif)
+
+- [ ] Integrasi backend → n8n webhook untuk proses AI summary dashboard
+- [ ] Integrasi n8n → Telegram untuk daily summary dari data dummy
+- [ ] Fallback response jika n8n/AI timeout atau gagal
+- [ ] Logging request/response penting untuk trace alur dashboard → n8n → Telegram
+
+### D. Auth + Master Data + CRUD (Backlog Lanjutan, Tetap Dipertahankan)
 
 - [x] `POST /auth/login`
 - [ ] `POST /auth/logout`
 - [ ] `GET /auth/me`
 - [ ] `POST /auth/register` (customer self-registration sesuai PRD)
 - [ ] Refactor login ke service/repository (hindari query langsung di handler)
+- [ ] Produk read/write: `GET /produk`, `GET /produk/:id`, `POST /produk`, `PUT /produk/:id`, `PATCH /produk/:id`
+- [ ] Customer read/write: `GET /customer`, `GET /customer/:id`, `POST /customer`, `PUT /customer/:id`
+- [ ] Users read/write: `GET /users`, `GET /users/:id`, `POST /users`, `PUT /users/:id`, `PATCH /users/:id`
 
-### C. Master data module
+### E. Acceptance criteria Sprint 1
 
-- [ ] Produk: `GET /produk`, `GET /produk/:id`, `POST /produk`, `PUT /produk/:id`, `PATCH /produk/:id`
-- [ ] Customer: `GET /customer`, `GET /customer/:id`, `POST /customer`, `PUT /customer/:id`
-- [ ] Users: `GET /users`, `GET /users/:id`, `POST /users`, `PUT /users/:id`, `PATCH /users/:id`
-
-### D. Acceptance criteria Sprint 1
-
-- [ ] Admin login, ambil profile (`/auth/me`), dan logout berhasil.
-- [ ] Viewer tidak bisa `POST/PUT/PATCH/DELETE`.
-- [ ] CRUD produk & customer endpoint minimal happy-path berjalan.
-- [ ] Migration + seed dapat dijalankan tanpa error.
-- [ ] Test tidak panic untuk skenario auth dasar.
+- [ ] Dummy data laporan tersedia dan konsisten untuk skenario dashboard.
+- [ ] Dashboard dapat mengambil data ringkasan dari endpoint GET laporan.
+- [ ] n8n berhasil memproses data laporan dan mengembalikan insight AI.
+- [ ] Telegram menerima ringkasan harian dari alur n8n.
+- [ ] Fallback berjalan saat AI/n8n error/timeout.
 
 ---
 
-## Sprint 2 — Transaksi Penjualan
+## Sprint 2 — Transaksi Penjualan (Backlog Lanjutan / Ditunda)
 
 **Goal:** siklus order dari create sampai paid/closed tersedia via API.
 
@@ -145,7 +184,7 @@ Acceptance:
 
 ---
 
-## Sprint 4 — Frontend Foundation + Public Store + Auth
+## Sprint 4 — Frontend Foundation + Public Store + Auth (Backlog Lanjutan / Ditunda)
 
 **Goal:** frontend siap dipakai user untuk login dan melihat katalog.
 
@@ -157,7 +196,7 @@ Acceptance:
 
 ---
 
-## Sprint 5 — Frontend Admin/Sales + Dashboard AI
+## Sprint 5 — Frontend Admin/Sales + Dashboard AI (Backlog Lanjutan / Ditunda)
 
 **Goal:** operasional harian admin/sales dan dashboard insight selesai.
 
@@ -183,12 +222,21 @@ Acceptance:
 
 ## 5) Board Eksekusi Sprint 1 (Siap Dipakai)
 
+Catatan fokus aktif:
+- Prioritaskan task dashboard read-only + n8n/AI + Telegram.
+- Task auth/CRUD/transaksi tetap dicatat sebagai backlog lanjutan.
+
 | ID | Task | Status | Dependency | PIC |
 |---|---|---|---|---|
 | S1-01 | Setup auto-migrate GORM model + tag + schema init | Done | DB ready | BE |
 | S1-02 | Terapkan env policy migration (`prod/staging` run, `dev` skip) | Done | S1-01 | BE |
 | S1-03 | Uji startup di profile staging (auto-migrate harus jalan) | Todo | S1-02 | BE |
 | S1-04 | Seed data minimum (admin/manager/sales/customer) | Todo | S1-03 | BE |
+| S1-R01 | Seed dummy dataset laporan dashboard (omzet/order/top produk/status) | Todo | S1-03 | BE |
+| S1-R02 | Implement endpoint GET laporan ringkasan dashboard (`/reports`) | Todo | S1-R01 | BE |
+| S1-R03 | Integrasi backend webhook ke n8n untuk AI summary dashboard | Todo | S1-R02 | BE + n8n |
+| S1-R04 | Integrasi n8n ke Telegram untuk kirim daily summary | Todo | S1-R03 | n8n |
+| S1-R05 | Implement fallback timeout/error di alur dashboard → n8n → Telegram | Todo | S1-R03 | BE + n8n |
 | S1-05 | Implement `POST /auth/logout` | Todo | login existing | BE |
 | S1-06 | Implement `GET /auth/me` | Todo | auth middleware | BE |
 | S1-07 | Implement `POST /auth/register` | Todo | S1-02 | BE |
@@ -291,6 +339,8 @@ Status:
 
 ### 5.3 Workflow 2 — AI Chat Assistant
 
+> **Status scope saat ini:** Opsional / backlog setelah dashboard summary stabil.
+
 - [ ] HTTP Webhook node (terima pesan + context produk)
 - [ ] Code node — susun system prompt + context
 - [ ] OpenAI node — generate jawaban
@@ -330,11 +380,11 @@ Status:
 
 ---
 
-## FASE 6 — Frontend: Setup & Design System
+## FASE 6 — Frontend: Setup & Design System (Backlog Lanjutan / Ditunda)
 
 > **Target:** Next.js project berjalan, design system selesai, semua base component tersedia.  
 > **Progress: `0%`** | Lokasi: `fe-penjualan/`  
-> ⚠️ *Fase ini dimulai setelah Fase 1-3 Backend selesai*
+> ⚠️ *Status scope saat ini: backlog setelah core dashboard+n8n+telegram stabil*
 
 ### 6.1 Init Project Next.js
 
@@ -369,7 +419,7 @@ Status:
 
 ---
 
-## FASE 7 — Frontend: Halaman Toko & Auth
+## FASE 7 — Frontend: Halaman Toko & Auth (Backlog Lanjutan / Ditunda)
 
 > **Target:** Halaman publik toko berjalan, login/logout berfungsi, route protection aktif.  
 > **Progress: `0%`**
@@ -394,7 +444,7 @@ Status:
 
 ---
 
-## FASE 8 — Frontend: Admin & Transaksi
+## FASE 8 — Frontend: Admin & Transaksi (Backlog Lanjutan / Ditunda)
 
 > **Target:** Seluruh halaman CRUD Master Data dan alur transaksi order selesai.  
 > **Progress: `0%`**
@@ -476,26 +526,19 @@ Item yang akan dikerjakan saat testing:
 ## Urutan Pengerjaan yang Direkomendasikan
 
 ```
-Minggu 1-2 (Fase 0 + 1):
-  → Klarifikasi PRD + API Docs + Setup Go Fiber + DB Migration
+Tahap Fokus Aktif (sekarang):
+  → Backend-only sampai selesai:
+    1) Backend GET-only + dummy data seed
+    2) Integrasi backend ↔ n8n (dashboard summary + telegram)
+    3) Workflow n8n prioritas + fallback/error handling
 
-Minggu 3-4 (Fase 2 + 3):
-  → Backend Auth + CRUD Master Data + Modul Transaksi
+Tahap Lanjutan (setelah core n8n/AI stabil):
+  → CRUD master data penuh
+  → Modul transaksi order/payment/shipment end-to-end
+  → Setelah seluruh backend scope selesai: frontend admin/sales operasional penuh
 
-Minggu 5-6 (Fase 4 + 5):
-  → Backend Dashboard + SSE Chat + n8n Setup + 5 Workflows
-
-Minggu 7-8 (Fase 6 + 7):
-  → Frontend Setup + Design System + Halaman Toko + Auth
-
-Minggu 9-10 (Fase 8 + 9):
-  → Frontend Admin + Transaksi + Dashboard AI
-
-Minggu 11 (Fase 10):
-  → Security Hardening + Pre-launch checklist
-
-Minggu 12:
-  → Buffer / Bug Fix / Go-Live
+Tahap Release:
+  → Security hardening + QA/UAT + go-live decision
 ```
 
 ---
