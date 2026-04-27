@@ -24,6 +24,8 @@ type Config struct {
 	N8NTelegramWebhookPath  string
 	FrontendURL             string
 	TelegramBotToken        string
+	OpenAIAPIKey            string
+	OpenAIURL               string
 }
 
 var App Config
@@ -50,6 +52,8 @@ func Load() {
 		N8NTelegramWebhookPath:  getEnv("N8N_TELEGRAM_WEBHOOK_PATH", "/webhook/telegram-qa"),
 		FrontendURL:             getEnv("FRONTEND_URL", "http://localhost:3000"),
 		TelegramBotToken:        getEnv("TELEGRAM_BOT_TOKEN", ""),
+		OpenAIAPIKey:            getEnv("OPENAI_API_KEY", ""),
+		OpenAIURL:               getEnv("OPENAI_URL", "https://api.openai.com/v1/chat/completions"),
 	}
 
 	// Default behavior:

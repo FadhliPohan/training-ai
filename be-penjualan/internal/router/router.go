@@ -36,6 +36,7 @@ func Setup(app *fiber.App) {
 	usersHandler := handler.NewUsersHandler()
 	reportHandler := handler.NewReportHandler()
 	settingsHandler := handler.NewSettingsHandler()
+	chatHandler := handler.NewChatHandler()
 
 	// ---- Public Catalogue (no auth needed) ----
 	// GET /api/v1/produk and /api/v1/produk/:id accessible without token
@@ -95,6 +96,9 @@ func Setup(app *fiber.App) {
 	{
 		reports.Get("/", reportHandler.Get)
 	}
+
+	// AI Chat — OpenAI GPT-4o (all authenticated roles)
+	protected.Post("/chat", chatHandler.Chat)
 
 	// Settings — Sprint 3
 	settings := protected.Group("/settings", middleware.RoleGuard("admin"))

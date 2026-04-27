@@ -12,6 +12,7 @@ import ChartRenderer from "@/components/ChartRenderer";
 import AIInsightCard from "@/components/AIInsightCard";
 import AnomalyFlag from "@/components/AnomalyFlag";
 import TopProdukTable from "@/components/TopProdukTable";
+import ChatBot from "@/components/ChatBot";
 
 import { kpiData, anomaliData, aiInsights, salesPerformData } from "@/lib/dummyData";
 
@@ -46,7 +47,8 @@ function DashboardContent() {
   const currentInsight = aiInsights[selectedReport];
 
   return (
-    <PageShell title="Dashboard Analitik">
+    <>
+      <PageShell title="Dashboard Analitik">
 
       {/* KPI Cards */}
       <section>
@@ -207,5 +209,9 @@ function DashboardContent() {
       </footer>
 
     </PageShell>
+
+    {/* AI Chatbot — floating widget, rendered outside PageShell scroll container */}
+    <ChatBot />
+    </>
   );
 }

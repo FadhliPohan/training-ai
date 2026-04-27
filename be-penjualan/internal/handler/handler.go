@@ -2,6 +2,7 @@ package handler
 
 import (
 	authHandler     "insightflow/be-penjualan/internal/handler/auth"
+	chatHandler     "insightflow/be-penjualan/internal/handler/chat"
 	customerHandler "insightflow/be-penjualan/internal/handler/customer"
 	internalHandler "insightflow/be-penjualan/internal/handler/internal"
 	produkHandler   "insightflow/be-penjualan/internal/handler/produk"
@@ -49,4 +50,9 @@ func NewTelegramHandler() *telegramHandler.Handler {
 // NewInternalHandler creates a new internal (n8n-facing) handler instance.
 func NewInternalHandler() *internalHandler.Handler {
 	return internalHandler.New()
+}
+
+// NewChatHandler creates a new AI chat handler instance.
+func NewChatHandler() *chatHandler.Handler {
+	return chatHandler.New()
 }

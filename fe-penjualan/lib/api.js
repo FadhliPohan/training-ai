@@ -87,6 +87,20 @@ export const settingsAPI = {
     }),
 };
 
+// ─── AI Chat ───────────────────────────────────────────────────────────────
+export const chatAPI = {
+  /**
+   * Send conversation messages to the InsightFlow AI backend.
+   * @param {Array<{role: string, content: string}>} messages - conversation history
+   * @returns {Promise<{data: {reply: string}}>}
+   */
+  chat: (messages) =>
+    apiFetch("/api/v1/chat", {
+      method: "POST",
+      body: JSON.stringify({ messages }),
+    }),
+};
+
 // ─── Helpers ───────────────────────────────────────────────────────────────
 export function formatRupiah(n) {
   return "Rp " + Number(n).toLocaleString("id-ID");
