@@ -14,6 +14,8 @@ services:
 
   n8n:
     image: n8nio/n8n:latest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     container_name: insightflow_n8n
     restart: always
     environment:

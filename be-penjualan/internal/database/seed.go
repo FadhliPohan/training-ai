@@ -22,6 +22,7 @@ func SeedData() {
 	seedUsers(ctx)
 	seedCustomers(ctx)
 	seedProduk(ctx)
+	seedOrders(ctx)
 
 	log.Println("[seed] seed data insertion complete")
 }
@@ -129,6 +130,87 @@ func seedProduk(ctx context.Context) {
 			log.Printf("[seed] failed to insert produk %s: %v", p.kode, err)
 		} else {
 			fmt.Printf("[seed] produk seeded: %s\n", p.nama)
+		}
+	}
+}
+
+func seedOrders(ctx context.Context) {
+	// 1. Get Sales User ID
+	var salesID string
+	err := Pool.QueryRow(ctx, "SELECT id FROM app.users WHERE role = 'sales' LIMIT 1").Scan(&salesID)
+	if err != nil {
+		log.Printf("[seed] failed to get sales user: %v", err)
+		return
+	}
+
+	// 2. Get Customer ID
+	var customerID int
+	err = Pool.QueryRow(ctx, "SELECT id FROM bisnis.tbl_customer WHERE kode_cust = 'CUST-001' LIMIT 1").Scan(&customerID)
+	if err != nil {
+		log.Printf("[seed] failed to get customer: %v", err)
+		return
+	}
+
+	// 3. Get Produk ID and Harga
+	var produkID int
+	var harga float64
+	err = Pool.QueryRow(ctx, "SELECT id, harga FROM bisnis.tbl_produk WHERE kode_produk = 'PRD-001' LIMIT 1").Scan(&produkID, &harga)
+	if err != nil {
+		log.Printf("[seed] failed to get produk: %v", err)
+		return
+	}
+
+	// 4. Insert Order
+	const qOrder = `
+		INSERT INTO bisnis.tbl_order (no_order, customer_id, sales_id, tanggal, status, total)
+		VALUES ($1, $2, $3, CURRENT_DATE, $4, $5)
+		ON CONFLICT (no_order) DO NOTHING
+		RETURNING id
+	`
+	var orderID int
+	qty := 2
+	total := harga * float64(qty)
+	
+	err = Pool.QueryRow(ctx, qOrder, "ORD-2026-001", customerID, salesID, "paid", total).Scan(&orderID)
+	if err != nil {
+		// Jika order sudah ada, err adalah no rows in result set, kita bisa cari ID-nya
+		err = Pool.QueryRow(ctx, "SELECT id FROM bisnis.tbl_order WHERE no_order = 'ORD-2026-001' LIMIT 1").Scan(&orderID)
+		if err != nil {
+			log.Printf("[seed] failed to insert/get order: %v", err)
+			return
+		}
+	} else {
+		fmt.Printf("[seed] order seeded: ORD-2026-001\n")
+		
+		// 5. Insert Order Detail
+		const qDetail = `
+			INSERT INTO bisnis.tbl_order_detail (order_id, produk_id, qty, harga_saat, subtotal)
+			VALUES ($1, $2, $3, $4, $5)
+		`
+		_, err = Pool.Exec(ctx, qDetail, orderID, produkID, qty, harga, total)
+		if err != nil {
+			log.Printf("[seed] failed to insert order detail: %v", err)
+		}
+
+		// 6. Insert Pembayaran
+		const qBayar = `
+			INSERT INTO bisnis.tbl_pembayaran (order_id, jumlah, metode, status)
+			VALUES ($1, $2, $3, $4)
+		`
+		_, err = Pool.Exec(ctx, qBayar, orderID, total, "transfer", "verified")
+		if err != nil {
+			log.Printf("[seed] failed to insert pembayaran: %v", err)
+		}
+
+		// 7. Insert Pengiriman
+		const qKirim = `
+			INSERT INTO bisnis.tbl_pengiriman (order_id, kurir, no_resi, status)
+			VALUES ($1, $2, $3, $4)
+			ON CONFLICT (order_id) DO NOTHING
+		`
+		_, err = Pool.Exec(ctx, qKirim, orderID, "JNE", "JNE1234567890", "proses")
+		if err != nil {
+			log.Printf("[seed] failed to insert pengiriman: %v", err)
 		}
 	}
 }

@@ -55,8 +55,6 @@ func Close() {
 	}
 }
 
-// RunAutoMigrate performs schema setup and model-based migration via GORM.
-// Runtime query path tetap menggunakan pgxpool; GORM dipakai khusus migrasi.
 func RunAutoMigrate() {
 	db, err := gorm.Open(postgres.Open(config.App.DatabaseURL), &gorm.Config{})
 	if err != nil {
