@@ -80,9 +80,9 @@ type Order struct {
 	CreatedAt   time.Time   `json:"created_at" gorm:"not null;default:now()"`
 
 	// Populated via JOIN when needed
-	Customer *Customer     `json:"customer,omitempty" gorm:"-"`
-	Sales    *User         `json:"sales,omitempty" gorm:"-"`
-	Details  []OrderDetail `json:"details,omitempty" gorm:"-"`
+	Customer *Customer     `json:"customer,omitempty" gorm:"foreignKey:CustomerID"`
+	Sales    *User         `json:"sales,omitempty" gorm:"foreignKey:SalesID"`
+	Details  []OrderDetail `json:"details,omitempty" gorm:"foreignKey:OrderID"`
 }
 
 // OrderDetail is a single line-item inside an Order.
@@ -94,7 +94,7 @@ type OrderDetail struct {
 	HargaSaat float64 `json:"harga_saat" gorm:"type:numeric(14,2);not null"` // snapshot price at time of order
 	Subtotal  float64 `json:"subtotal" gorm:"type:numeric(14,2);not null"`
 
-	Produk *Produk `json:"produk,omitempty" gorm:"-"`
+	Produk *Produk `json:"produk,omitempty" gorm:"foreignKey:ProdukID"`
 }
 
 // PembayaranStatus defines payment verification states.

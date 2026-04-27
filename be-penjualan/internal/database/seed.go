@@ -23,6 +23,7 @@ func SeedData() {
 	seedCustomers(ctx)
 	seedProduk(ctx)
 	seedOrders(ctx)
+	seedTelegramConfig(ctx)
 
 	log.Println("[seed] seed data insertion complete")
 }
@@ -211,6 +212,43 @@ func seedOrders(ctx context.Context) {
 		_, err = Pool.Exec(ctx, qKirim, orderID, "JNE", "JNE1234567890", "proses")
 		if err != nil {
 			log.Printf("[seed] failed to insert pengiriman: %v", err)
+		}
+	}
+}
+
+func seedTelegramConfig(ctx context.Context) {
+	type seedTele struct {
+		namaGrup   string
+		chatID     int64
+		jamSummary string
+	}
+
+	configs := []seedTele{
+		{"Sales Daily Updates", -1001234567890, "07:00"},
+		{"Management Dashboard Alerts", -1009876543210, "08:00"},
+	}
+
+	// Menggunakan chat_id sebagai basis pengecekan duplicate
+	const q = `
+		INSERT INTO app.telegram_config (nama_grup, chat_id, jam_summary, aktif)
+		VALUES ($1, $2, $3, true)
+		ON CONFLICT DO NOTHING
+	`
+
+	for _, c := range configs {
+		// PostgreSQL uuid tidak punya default unique constraints untuk chat_id,
+		// jadi kita gunakan pengecekan manual atau jalankan query sederhana
+		var exists bool
+		err := Pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM app.telegram_config WHERE chat_id = $1)", c.chatID).Scan(&exists)
+		if err == nil && !exists {
+			_, err = Pool.Exec(ctx, q, c.namaGrup, c.chatID, c.jamSummary)
+			if err != nil {
+				log.Printf("[seed] failed to insert telegram config %s: %v", c.namaGrup, err)
+			} else {
+				fmt.Printf("[seed] telegram config seeded: %s\n", c.namaGrup)
+			}
+		} else if err != nil {
+			log.Printf("[seed] failed to check telegram config: %v", err)
 		}
 	}
 }
