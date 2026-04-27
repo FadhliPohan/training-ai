@@ -34,6 +34,8 @@ func Setup(app *fiber.App) {
 	produkHandler := handler.NewProdukHandler()
 	customerHandler := handler.NewCustomerHandler()
 	usersHandler := handler.NewUsersHandler()
+	reportHandler := handler.NewReportHandler()
+	settingsHandler := handler.NewSettingsHandler()
 
 	// ---- Public Catalogue (no auth needed) ----
 	// GET /api/v1/produk and /api/v1/produk/:id accessible without token
@@ -91,15 +93,44 @@ func Setup(app *fiber.App) {
 	// Reports / Dashboard — Sprint 3
 	reports := protected.Group("/reports", middleware.RoleGuard("admin", "manager", "viewer"))
 	{
-		_ = reports
+		reports.Get("/", reportHandler.Get)
 	}
 
 	// Settings — Sprint 3
 	settings := protected.Group("/settings", middleware.RoleGuard("admin"))
 	{
-		_ = settings
+		settings.Get("/telegram", settingsHandler.GetTelegram)
+		settings.Put("/telegram", settingsHandler.UpdateTelegram)
 	}
 
-	// Internal webhook (called by n8n — Sprint 3)
-	// api.Post("/internal/ai-result", internalHandler.AIResult)
+	// ---- Telegram inbound webhook (public — called by Telegram servers) ----
+	// Telegram sends POST requests to this URL whenever a user messages the bot.
+	// No JWT required — Telegram does not support custom auth headers on its side.
+	// Security: validate X-Telegram-Bot-Api-Secret-Token inside handler (optional).
+	telegramHandler := handler.NewTelegramHandler()
+	api.Post("/telegram/webhook", telegramHandler.Webhook)
+
+	// ---- Internal routes (called by n8n — protected by X-Internal-Key) ----
+	// These endpoints bypass JWT and are meant only for internal service-to-service calls.
+	internalHandler := handler.NewInternalHandler()
+	internal := app.Group("/api/internal", middleware.InternalKeyGuard)
+	{
+		// GET /api/internal/reports/summary  → n8n Daily Summary workflow
+		// GET /api/internal/reports/anomaly  → n8n Anomaly Alert workflow (every 15 min)
+		// GET /api/internal/reports          → n8n Telegram Q&A (dynamic intent routing)
+		internalReports := internal.Group("/reports")
+		internalReports.Get("/summary", internalHandler.Summary)
+		internalReports.Get("/anomaly", internalHandler.Anomaly)
+		internalReports.Get("/", internalHandler.Reports)
+
+		// GET /api/internal/users/by-telegram → n8n Telegram Q&A workflow (user lookup)
+		internalUsers := internal.Group("/users")
+		internalUsers.Get("/by-telegram", internalHandler.UserByTelegram)
+
+		// GET /api/internal/settings/telegram → n8n reads chat_id + threshold dynamically
+		// Admin updates these via PUT /api/v1/settings/telegram (JWT-protected)
+		// n8n picks them up here without needing JWT
+		internalSettings := internal.Group("/settings")
+		internalSettings.Get("/telegram", internalHandler.Settings)
+	}
 }

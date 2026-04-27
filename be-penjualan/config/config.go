@@ -16,10 +16,12 @@ type Config struct {
 	DatabaseURL             string
 	JWTSecret               string
 	AutoMigrate             bool
+	InternalAPIKey          string
 	N8NBaseURL              string
 	N8NWebhookSecret        string
 	N8NDashboardWebhookPath string
 	N8NChatWebhookPath      string
+	N8NTelegramWebhookPath  string
 	FrontendURL             string
 	TelegramBotToken        string
 }
@@ -39,11 +41,13 @@ func Load() {
 		AppPort:                 getEnv("APP_PORT", "8080"),
 		DatabaseURL:             mustEnv("DATABASE_URL"),
 		JWTSecret:               mustEnv("JWT_SECRET"),
-		AutoMigrate:             false, // will be set after env-aware default is computed
+		AutoMigrate:             false,
+		InternalAPIKey:          mustEnv("INTERNAL_API_KEY"),
 		N8NBaseURL:              getEnv("N8N_BASE_URL", "http://localhost:5678"),
 		N8NWebhookSecret:        getEnv("N8N_WEBHOOK_SECRET", ""),
 		N8NDashboardWebhookPath: getEnv("N8N_DASHBOARD_WEBHOOK_PATH", "/webhook/dashboard-ai"),
 		N8NChatWebhookPath:      getEnv("N8N_CHAT_WEBHOOK_PATH", "/webhook/chat-ai"),
+		N8NTelegramWebhookPath:  getEnv("N8N_TELEGRAM_WEBHOOK_PATH", "/webhook/telegram-qa"),
 		FrontendURL:             getEnv("FRONTEND_URL", "http://localhost:3000"),
 		TelegramBotToken:        getEnv("TELEGRAM_BOT_TOKEN", ""),
 	}

@@ -1,0 +1,217 @@
+{
+  "name": "InsightFlow — Dashboard AI Analysis",
+  "nodes": [
+    {
+      "id": "wh-dash",
+      "name": "Webhook from Backend",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "dashboard-ai",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "code-prompt",
+      "name": "Format Analysis Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst { report_type, data, metrics, filters } = body;\n\nconst chartOptions = ['line', 'bar', 'pie', 'funnel', 'table'];\n\nconst prompt = `Kamu adalah analis data penjualan pakaian.\n\nTipe laporan: ${report_type}\nFilter periode: dari ${filters?.from || 'awal'} sampai ${filters?.to || 'sekarang'}\n${filters?.sales_id ? 'Filter sales_id: ' + filters.sales_id : ''}\n\nMetrics:\n${JSON.stringify(metrics, null, 2)}\n\nData sample (maksimal 10 baris):\n${JSON.stringify(Array.isArray(data) ? data.slice(0,10) : data, null, 2)}\n\nAnalisa data di atas dan kembalikan JSON valid berikut:\n{\n  \"chart_type\": \"${chartOptions.join('|')}\",\n  \"summary\": \"ringkasan 2-3 kalimat Bahasa Indonesia\",\n  \"anomalies\": [{\"metric\": \"\", \"actual\": 0, \"expected\": 0, \"variance_pct\": 0, \"description\": \"\"}],\n  \"recommendation\": \"1 kalimat saran tindakan konkret\"\n}\n\nKembalikan JSON valid saja, tanpa teks lain.`;\n\nreturn [{ json: { prompt, report_type } }];"
+      }
+    },
+    {
+      "id": "code-parse",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.message.content.trim();\n\n// Fallback response\nconst fallback = {\n  chart_type: 'bar',\n  summary: 'Data tersedia namun analisis AI sedang tidak tersedia.',\n  anomalies: [],\n  recommendation: 'Silakan refresh atau coba beberapa saat lagi.'\n};\n\nlet parsed;\ntry {\n  // Strip markdown code block if present\n  const cleaned = raw.replace(/```json?/g, '').replace(/```/g, '').trim();\n  parsed = JSON.parse(cleaned);\n} catch(e) {\n  parsed = fallback;\n}\n\n// Validate required fields\nif (!parsed.chart_type || !parsed.summary) {\n  parsed = { ...fallback, ...parsed };\n}\n\n// Ensure anomalies is array\nif (!Array.isArray(parsed.anomalies)) {\n  parsed.anomalies = [];\n}\n\nreturn [{ json: parsed }];"
+      }
+    },
+    {
+      "id": "resp-ok",
+      "name": "Respond to Backend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "err-dash",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        680,
+        500
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "resp-fallback",
+      "name": "Respond Fallback",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        500
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"chart_type\":\"bar\",\"summary\":\"Data tersedia namun analisis AI sedang tidak tersedia saat ini.\",\"anomalies\":[],\"recommendation\":\"Silakan refresh halaman atau coba beberapa saat lagi.\"}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "lm-dash",
+      "name": "OpenAI Model (Dashboard)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        680,
+        440
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "1",
+          "name": "OpenAI account"
+        }
+      },
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 600
+        }
+      }
+    },
+    {
+      "id": "agent-dash",
+      "name": "Analyze with AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook from Backend": {
+      "main": [
+        [
+          {
+            "node": "Format Analysis Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Analysis Prompt": {
+      "main": [
+        [
+          {
+            "node": "Analyze with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze with AI": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Respond Fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model (Dashboard)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze with AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "insightflow"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d55d9cc69ddc2354351d053a5423fd12f72f5ba734faff57519e359889a61a82"
+  },
+  "pinData": {}
+}

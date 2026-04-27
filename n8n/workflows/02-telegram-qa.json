@@ -1,0 +1,603 @@
+{
+  "name": "InsightFlow — Telegram Q&A (On-Demand)",
+  "nodes": [
+    {
+      "id": "wh-001",
+      "name": "Webhook from Golang",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "telegram-qa",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "if-001",
+      "name": "User Terdaftar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.user_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "tg-unreg",
+      "name": "Reply: Tidak Terdaftar",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        680,
+        480
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "2",
+          "name": "Telegram account"
+        }
+      },
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.body.chat_id }}",
+        "text": "❌ Maaf, akun Telegram Anda belum terdaftar di sistem InsightFlow.\n\nHubungi admin untuk menghubungkan akun Telegram Anda.",
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "resp-unreg",
+      "name": "Respond Unreg",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        480
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\": true}",
+        "options": {}
+      }
+    },
+    {
+      "id": "code-parse",
+      "name": "Extract Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        280
+      ],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nreturn [{\n  json: {\n    user_id: body.user_id,\n    user_nama: body.user_nama,\n    role: body.role,\n    chat_id: body.chat_id,\n    message_id: body.message_id,\n    message_text: body.message_text,\n    telegram_user_id: body.telegram_user_id\n  }\n}];"
+      }
+    },
+    {
+      "id": "code-url",
+      "name": "Build Endpoint URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        280
+      ],
+      "parameters": {
+        "jsCode": "const prev = $input.first().json;\nconst payload = $('Extract Payload').first().json;\n\nlet intentRaw = prev.message.content.trim();\n// Strip markdown code block if present\nintentRaw = intentRaw.replace(/```json?/g, '').replace(/```/g, '').trim();\n\nlet parsed;\ntry { parsed = JSON.parse(intentRaw); }\ncatch(e) { parsed = { intent: 'unknown', params: {} }; }\n\nconst { intent, params = {} } = parsed;\nconst BASE = 'http://localhost:8080';\nconst KEY='insightflow_internal_secret_key_change_in_production';\nconst threshold=($('Get Settings').first()?.json?.data?.anomaly_threshold_pct)||10;\n\nconst intentMap = {\n  daily_summary:       '/api/internal/reports/summary',\n  top_products:        '/api/internal/reports?type=top-products',\n  low_stock:           '/api/internal/reports?type=low-stock',\n  order_funnel:        '/api/internal/reports?type=order-funnel',\n  category_breakdown:  '/api/internal/reports?type=category-breakdown',\n  sales_performance:   '/api/internal/reports?type=sales-by-person',\n  monthly_sales:       '/api/internal/reports?type=monthly-sales',\n  revenue_trend:       '/api/internal/reports?type=revenue-trend',\n};\n\nif (intent === 'unknown' || !intentMap[intent]) {\n  return [{ json: {\n    unknown: true,\n    chat_id: payload.chat_id,\n    message_text: payload.message_text\n  }}];\n}\n\nlet url = BASE + intentMap[intent];\nconst qs = new URLSearchParams();\nif (params.from)     qs.set('from', params.from);\nif (params.to)       qs.set('to', params.to);\nif (params.sales_id) qs.set('sales_id', params.sales_id);\nif (qs.toString() && !url.includes('?')) url += '?' + qs.toString();\nelse if (qs.toString()) url += '&' + qs.toString();\n\nreturn [{ json: {\n  url, intent, params,\n  key: KEY,\n  chat_id: payload.chat_id,\n  user_nama: payload.user_nama,\n  role: payload.role,\n  message_text: payload.message_text,\n  unknown: false\n}}];"
+      }
+    },
+    {
+      "id": "if-known",
+      "name": "Intent Diketahui?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1340,
+        280
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.unknown }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "tg-unknown",
+      "name": "Reply: Tidak Dimengerti",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1560,
+        460
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "2",
+          "name": "Telegram account"
+        }
+      },
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat_id }}",
+        "text": "🤔 Maaf, saya tidak mengerti pertanyaan Anda.\n\nCoba tanyakan:\n• _penjualan hari ini_\n• _produk terlaris_\n• _stok rendah_\n• _order pending_\n• _performa sales_\n• _laporan bulanan_",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      }
+    },
+    {
+      "id": "http-data",
+      "name": "Get Report Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1560,
+        280
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Internal-Key",
+              "value": "={{ $json.key }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "code-resp-prompt",
+      "name": "Format Response Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        280
+      ],
+      "parameters": {
+        "jsCode": "const reportData = $input.first().json.data;\nconst urlNode = $('Build Endpoint URL').first().json;\n\nconst prompt = `Kamu adalah asisten laporan penjualan pakaian yang menjawab pertanyaan via Telegram.\n\nPertanyaan pengguna (${urlNode.user_nama}, role: ${urlNode.role}): \"${urlNode.message_text}\"\n\nData laporan:\n${JSON.stringify(reportData, null, 2)}\n\nBuat jawaban singkat (maksimal 6 baris) dalam Bahasa Indonesia yang:\n- Langsung menjawab pertanyaan pengguna\n- Menggunakan format angka Rupiah Indonesia\n- Gunakan emoji yang relevan\n- Gunakan format Telegram Markdown (*bold* untuk angka penting)\n- Akhiri dengan satu insight atau saran singkat jika relevan`;\n\nreturn [{ json: { prompt, chat_id: urlNode.chat_id } }];"
+      }
+    },
+    {
+      "id": "tg-resp",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2220,
+        280
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "2",
+          "name": "Telegram account"
+        }
+      },
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Format Response Prompt').first().json.chat_id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      }
+    },
+    {
+      "id": "resp-ok",
+      "name": "Respond to Golang",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2440,
+        280
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\": true}",
+        "options": {}
+      }
+    },
+    {
+      "id": "err-001",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        500
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "code-err",
+      "name": "Get Chat ID from Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        500
+      ],
+      "parameters": {
+        "jsCode": "const err = $input.first().json;\nlet chatId = '';\ntry {\n  chatId = err.execution?.data?.resultData?.runData?.['Extract Payload']?.[0]?.data?.main?.[0]?.[0]?.json?.chat_id || '';\n} catch(e) {}\nreturn [{ json: { chat_id: chatId, error: err.error?.message || 'Unknown error' } }];"
+      }
+    },
+    {
+      "id": "tg-err",
+      "name": "Send Error to User",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2220,
+        500
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "2",
+          "name": "Telegram account"
+        }
+      },
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat_id }}",
+        "text": "⚠️ Maaf, terjadi kesalahan saat memproses permintaan Anda. Silakan coba lagi dalam beberapa saat.",
+        "additionalFields": {}
+      }
+    },
+    {
+      "id": "http-qa-settings",
+      "name": "Get Settings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        500
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:8080/api/internal/settings/telegram",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Internal-Key",
+              "value": "insightflow_internal_secret_key_change_in_production"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 5000
+        }
+      }
+    },
+    {
+      "id": "lm-intent",
+      "name": "OpenAI Model (Intent)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        900,
+        440
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "1",
+          "name": "OpenAI account"
+        }
+      },
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0,
+          "maxTokens": 200
+        }
+      }
+    },
+    {
+      "id": "agent-intent",
+      "name": "Parse Intent AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        900,
+        280
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "=Pesan dari pengguna (role: {{ $json.role }}): \"{{ $json.message_text }}\"\n\nTentukan intent dan parameter. Untuk role sales, sales_id harus selalu diisi dengan: {{ $json.user_id }}",
+        "options": {
+          "systemMessage": "Kamu adalah intent parser untuk sistem laporan penjualan pakaian.\nKembalikan JSON valid saja tanpa penjelasan tambahan.\nFormat: {\"intent\": \"...\", \"params\": {\"from\": \"\", \"to\": \"\", \"sales_id\": \"\"}}\nIntent valid: daily_summary | top_products | low_stock | order_funnel | category_breakdown | sales_performance | monthly_sales | revenue_trend | unknown\nAturan:\n- penjualan hari ini / omzet hari ini → daily_summary\n- produk terlaris / best seller → top_products\n- stok rendah / habis / restock → low_stock\n- order pending / status order / funnel → order_funnel\n- per kategori / breakdown kategori → category_breakdown\n- performa sales / sales tertentu → sales_performance\n- bulanan / per bulan → monthly_sales\n- tren pendapatan / revenue trend → revenue_trend\n- tidak sesuai → unknown"
+        }
+      }
+    },
+    {
+      "id": "lm-resp",
+      "name": "OpenAI Model (Response)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2000,
+        440
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "1",
+          "name": "OpenAI account"
+        }
+      },
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.4,
+          "maxTokens": 400
+        }
+      }
+    },
+    {
+      "id": "agent-resp",
+      "name": "Format Response AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2000,
+        280
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook from Golang": {
+      "main": [
+        [
+          {
+            "node": "User Terdaftar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User Terdaftar?": {
+      "main": [
+        [
+          {
+            "node": "Extract Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply: Tidak Terdaftar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply: Tidak Terdaftar": {
+      "main": [
+        [
+          {
+            "node": "Respond Unreg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Payload": {
+      "main": [
+        [
+          {
+            "node": "Parse Intent AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Intent AI": {
+      "main": [
+        [
+          {
+            "node": "Build Endpoint URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Endpoint URL": {
+      "main": [
+        [
+          {
+            "node": "Intent Diketahui?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Diketahui?": {
+      "main": [
+        [
+          {
+            "node": "Get Report Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply: Tidak Dimengerti",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Report Data": {
+      "main": [
+        [
+          {
+            "node": "Format Response Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response Prompt": {
+      "main": [
+        [
+          {
+            "node": "Format Response AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response AI": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Golang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Chat ID from Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Chat ID from Error": {
+      "main": [
+        [
+          {
+            "node": "Send Error to User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model (Intent)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Parse Intent AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model (Response)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Format Response AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "insightflow"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d55d9cc69ddc2354351d053a5423fd12f72f5ba734faff57519e359889a61a82"
+  },
+  "pinData": {}
+}

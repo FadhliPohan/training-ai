@@ -15,6 +15,7 @@ import (
 type UserRepository interface {
 	FindByEmail(ctx context.Context, email string) (*domain.User, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*domain.User, error)
+	FindByTelegramUserID(ctx context.Context, telegramUserID int64) (*domain.User, error)
 	List(ctx context.Context) ([]domain.User, error)
 	Create(ctx context.Context, user *domain.User) error
 	Update(ctx context.Context, user *domain.User) error
@@ -66,6 +67,31 @@ func (r *userRepo) FindByID(ctx context.Context, id uuid.UUID) (*domain.User, er
 	var u domain.User
 	err := database.Pool.QueryRow(ctx, q, id).Scan(
 		&u.ID, &u.Nama, &u.Email, &u.Password, &u.Role,
+		&u.TelegramUserID, &u.Aktif, &u.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("user not found")
+		}
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *userRepo) FindByTelegramUserID(ctx context.Context, telegramUserID int64) (*domain.User, error) {
+	if database.Pool == nil {
+		return nil, errors.New("database pool not initialised")
+	}
+
+	const q = `
+		SELECT id, nama, email, role, telegram_user_id, aktif, created_at
+		FROM app.users
+		WHERE telegram_user_id = $1 AND aktif = true
+		LIMIT 1
+	`
+	var u domain.User
+	err := database.Pool.QueryRow(ctx, q, telegramUserID).Scan(
+		&u.ID, &u.Nama, &u.Email, &u.Role,
 		&u.TelegramUserID, &u.Aktif, &u.CreatedAt,
 	)
 	if err != nil {

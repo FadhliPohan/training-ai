@@ -1,0 +1,313 @@
+{
+  "name": "InsightFlow — Daily Summary (07:00 WIB)",
+  "nodes": [
+    {
+      "id": "sched-001",
+      "name": "Scheduler 07:00 WIB",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "http-001",
+      "name": "Get Summary Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:8080/api/internal/reports/summary",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Internal-Key",
+              "value": "insightflow_internal_secret_key_change_in_production"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "http-settings",
+      "name": "Get Telegram Settings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:8080/api/internal/settings/telegram",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Internal-Key",
+              "value": "insightflow_internal_secret_key_change_in_production"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 5000
+        }
+      }
+    },
+    {
+      "id": "code-001",
+      "name": "Format Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const d=$input.first().json.data;\nconst cfg=$('Get Telegram Settings').first().json.data;\nconst threshold=cfg?.anomaly_threshold_pct||10;\nconst fmt=n=>'Rp '+Number(n).toLocaleString('id-ID');\nconst t=d.revenue_vs_yesterday_pct>=0?`naik ${d.revenue_vs_yesterday_pct}%`:`turun ${Math.abs(d.revenue_vs_yesterday_pct)}%`;\nconst prompt=`Laporan penjualan ${d.day_of_week} ${d.date}:\n- Omzet: ${fmt(d.total_revenue)} (${t} vs kemarin)\n- Order: ${d.total_orders} (selesai:${d.completed_orders} pending:${d.pending_orders})\n- Produk terlaris: ${d.top_product} | Sales terbaik: ${d.top_sales}\n- Stok rendah: ${d.low_stock_count} produk\n${d.has_anomaly?'⚠️ Anomali: '+d.anomaly_msg:''}\n\nBuat ringkasan 3-4 kalimat Bahasa Indonesia informatif untuk manajer. Sertakan 1 saran.`;\nreturn [{json:{prompt,raw:d,chat_id:cfg?.chat_id||0,threshold}}];"
+      }
+    },
+    {
+      "id": "code-002",
+      "name": "Format Telegram Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const aiText=$input.first().json.output||'';\nconst raw=$('Format Prompt').first().json.raw;\n\nconst fmt = (n) => 'Rp ' + Number(n).toLocaleString('id-ID');\nconst trendIcon = raw.revenue_vs_yesterday_pct >= 0 ? '📈' : '📉';\nconst sign = raw.revenue_vs_yesterday_pct >= 0 ? '+' : '';\n\nconst lowStockLine = raw.low_stock_count > 0\n  ? `\\n⚠️ *Stok Rendah:* ${raw.low_stock_count} produk perlu restock`\n  : '';\n\nconst message = `📊 *Laporan Penjualan Harian*\n_${raw.day_of_week}, ${raw.date}_\n\n💰 Omzet: *${fmt(raw.total_revenue)}* ${trendIcon} ${sign}${raw.revenue_vs_yesterday_pct}%\n📦 Order: *${raw.total_orders}* total ✅${raw.completed_orders} ⏳${raw.pending_orders}\n🏆 Terlaris: *${raw.top_product}*\n👤 Sales Terbaik: *${raw.top_sales}*${lowStockLine}\n\n🤖 _${aiText}_\n\n_Dikirim otomatis pukul 07.00 WIB_`;\n\nreturn [{ json: { message } }];"
+      }
+    },
+    {
+      "id": "tg-001",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1560,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "2",
+          "name": "Telegram account"
+        }
+      },
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Format Prompt').first().json.chat_id }}",
+        "text": "={{ $json.message }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      }
+    },
+    {
+      "id": "err-001",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        900,
+        500
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "tg-err-001",
+      "name": "Send Error Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        900,
+        500
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "2",
+          "name": "Telegram account"
+        }
+      },
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Format Prompt').first().json.chat_id || '-100123456789' }}",
+        "text": "⚠️ *InsightFlow Alert*\nGagal mengirim laporan pagi ini.\nError: {{ $json.error.message }}\n\nSilakan cek dashboard manual: http://localhost:3000/dashboard",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      }
+    },
+    {
+      "id": "lm-summary",
+      "name": "OpenAI Model (Summary)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        900,
+        440
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "1",
+          "name": "OpenAI account"
+        }
+      },
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {
+          "temperature": 0.5,
+          "maxTokens": 500
+        }
+      }
+    },
+    {
+      "id": "agent-summary",
+      "name": "Generate Summary AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "options": {
+          "systemMessage": "Kamu adalah asisten laporan penjualan pakaian. Buat ringkasan laporan harian yang singkat, jelas, dan informatif dalam Bahasa Indonesia. Selalu sertakan angka dalam format Rupiah Indonesia."
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Scheduler 07:00 WIB": {
+      "main": [
+        [
+          {
+            "node": "Get Summary Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Summary Data": {
+      "main": [
+        [
+          {
+            "node": "Get Telegram Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Prompt": {
+      "main": [
+        [
+          {
+            "node": "Generate Summary AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Summary AI": {
+      "main": [
+        [
+          {
+            "node": "Format Telegram Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Telegram Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Telegram Settings": {
+      "main": [
+        [
+          {
+            "node": "Format Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model (Summary)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Summary AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "insightflow"
+    }
+  ],
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d55d9cc69ddc2354351d053a5423fd12f72f5ba734faff57519e359889a61a82"
+  },
+  "pinData": {}
+}

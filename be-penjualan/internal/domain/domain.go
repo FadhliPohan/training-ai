@@ -141,7 +141,7 @@ type TelegramConfig struct {
 	NamaGrup   string    `json:"nama_grup" gorm:"type:varchar(100);not null;default:'Default Group'"`
 	ChatID     int64     `json:"chat_id" gorm:"not null;default:0"`
 	Aktif      bool      `json:"aktif" gorm:"not null;default:true"`
-	JamSummary string    `json:"jam_summary" gorm:"type:time;not null;default:'07:00:00'"`
+	JamSummary string    `json:"jam_summary" gorm:"type:varchar(5);not null;default:'07:00'"`
 	CreatedAt  time.Time `json:"created_at" gorm:"not null;default:now()"`
 }
 

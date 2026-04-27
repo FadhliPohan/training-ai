@@ -99,3 +99,14 @@ func parseToken(tokenStr string) (*JWTClaims, error) {
 	}
 	return claims, nil
 }
+
+// InternalKeyGuard protects internal endpoints (called by n8n or other services).
+// It validates the X-Internal-Key header against INTERNAL_API_KEY in config.
+// These endpoints do NOT require JWT — they use a shared secret instead.
+func InternalKeyGuard(c *fiber.Ctx) error {
+	key := c.Get("X-Internal-Key")
+	if key == "" || key != config.App.InternalAPIKey {
+		return response.Unauthorized(c, "Akses tidak diizinkan. Header X-Internal-Key tidak valid.")
+	}
+	return c.Next()
+}

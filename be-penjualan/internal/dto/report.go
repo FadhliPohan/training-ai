@@ -1,37 +1,36 @@
 package dto
 
-import "time"
-
-// ==================== REPORT DTOs ====================
-
-// ReportRequest represents the request payload for generating a report
+// ReportRequest represents query parameters for report generation.
 type ReportRequest struct {
-	Type     string    `query:"type" validate:"required,oneof=daily-sales monthly-sales top-products sales-by-person order-funnel category-breakdown low-stock revenue-trend" example:"daily-sales"`
-	FromDate time.Time `query:"from" validate:"required" example:"2026-04-01T00:00:00Z"`
-	ToDate   time.Time `query:"to" validate:"required" example:"2026-04-30T23:59:59Z"`
-	SalesID  *string   `query:"sales_id" validate:"omitempty,uuid" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Type    string `query:"type" example:"daily-sales"`
+	From    string `query:"from" example:"2026-04-01"`
+	To      string `query:"to" example:"2026-04-30"`
+	SalesID string `query:"sales_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Mode    string `query:"mode" example:"raw"`
 }
 
-// ReportResponse represents the response payload for a report
+// ReportResponse represents dashboard report output consumed by frontend and n8n.
 type ReportResponse struct {
-	Type        string      `json:"type" example:"daily-sales"`
-	Title       string      `json:"title" example:"Penjualan Harian"`
-	Description string      `json:"description" example:"Grafik penjualan harian dalam periode tertentu"`
-	ChartType   string      `json:"chart_type" example:"line"`
-	Data        interface{} `json:"data"`
-	Summary     string      `json:"summary" example:"Total penjualan meningkat 15% dibanding bulan sebelumnya."`
-	Anomalies   []Anomaly   `json:"anomalies,omitempty"`
-	Recommendation string   `json:"recommendation,omitempty" example:"Pertimbangkan promosi untuk produk dengan penjualan rendah.""`
+	Type           string                 `json:"type" example:"daily-sales"`
+	Title          string                 `json:"title" example:"Penjualan Harian"`
+	Description    string                 `json:"description" example:"Ringkasan penjualan harian dalam periode tertentu"`
+	ChartType      string                 `json:"chart_type" example:"line"`
+	Data           interface{}            `json:"data"`
+	Metrics        map[string]interface{} `json:"metrics,omitempty"`
+	Summary        string                 `json:"summary" example:"Penjualan dalam 7 hari terakhir cenderung naik."`
+	Anomalies      []Anomaly              `json:"anomalies,omitempty"`
+	Recommendation string                 `json:"recommendation,omitempty" example:"Pertahankan stok produk terlaris untuk 3 hari ke depan."`
+	AISource       string                 `json:"ai_source" example:"n8n"`
+	FallbackReason string                 `json:"fallback_reason,omitempty" example:"n8n timeout, menggunakan summary default backend"`
 }
 
-// Anomaly represents an anomaly detected in the report data
+// Anomaly represents anomaly output after normalization.
 type Anomaly struct {
-	Metric     string  `json:"metric" example:"daily_revenue"`
-	Value      float64 `json:"value" example:"5000000"`
-	Expected   float64 `json:"expected" example:"6000000"`
-	Deviation  float64 `json:"deviation" example:"-16.67"`
-	Threshold  float64 `json:"threshold" example:"10.00"`
-	Message    string  `json:"message" example:"Pendapatan harian turun 16.67% dari ekspektasi."`
+	Metric      string  `json:"metric" example:"daily_revenue"`
+	Actual      float64 `json:"actual" example:"2000000"`
+	Expected    float64 `json:"expected" example:"5000000"`
+	VariancePct float64 `json:"variance_pct" example:"-60"`
+	Description string  `json:"description" example:"Pendapatan harian turun signifikan dari baseline."`
 }
 
 // DailySalesData represents data for daily sales report
@@ -75,9 +74,9 @@ type CategoryBreakdownData struct {
 
 // LowStockData represents data for low stock report
 type LowStockData struct {
-	ProductName string `json:"product_name" example:"Kaos Polos Cotton Combed 30s"`
-	CurrentStock int   `json:"current_stock" example:"5"`
-	MinStock    int    `json:"min_stock" example:"10"`
+	ProductName  string `json:"product_name" example:"Kaos Polos Cotton Combed 30s"`
+	CurrentStock int    `json:"current_stock" example:"5"`
+	MinStock     int    `json:"min_stock" example:"10"`
 }
 
 // RevenueTrendData represents data for revenue trend report
