@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -61,6 +62,18 @@ func main() {
 		database.RunAutoMigrate()
 	} else {
 		log.Info().Str("env", config.App.AppEnv).Msg("auto-migration skipped for this environment")
+	}
+
+	// ---- Seed data (opt-in via --seed flag or SEED=true env) ----
+	seedFlag := os.Getenv("SEED") == "true"
+	for _, arg := range os.Args[1:] {
+		if strings.EqualFold(arg, "--seed") || strings.EqualFold(arg, "-seed") {
+			seedFlag = true
+		}
+	}
+	if seedFlag {
+		log.Info().Msg("seed flag detected, running seed data insertion")
+		database.SeedData()
 	}
 
 	// ---- Fiber App ----
