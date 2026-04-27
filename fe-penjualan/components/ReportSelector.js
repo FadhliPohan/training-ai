@@ -13,15 +13,15 @@ export default function ReportSelector({ value, onChange }) {
       <button
         onClick={() => setOpen(!open)}
         className="
-          flex items-center gap-3 w-full md:w-auto min-w-[280px]
+          flex items-center gap-3 w-full
           bg-slate-800/60 border border-slate-700 hover:border-indigo-500/50
           rounded-xl px-4 py-2.5 text-sm text-left transition-all duration-200
           hover:bg-slate-700/60 focus:outline-none focus:ring-2 focus:ring-indigo-500/30
         "
       >
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {selected ? (
-            <span className="text-white font-medium">{selected.label}</span>
+            <span className="text-white font-medium block truncate">{selected.label}</span>
           ) : (
             <span className="text-slate-400">Pilih jenis laporan...</span>
           )}
@@ -38,7 +38,7 @@ export default function ReportSelector({ value, onChange }) {
       {/* Dropdown */}
       {open && (
         <div className="
-          absolute top-full left-0 mt-2 w-full md:w-[360px] z-50
+          absolute top-full left-0 mt-2 w-full min-w-[320px] z-50
           bg-[#1e293b] border border-slate-700 rounded-xl shadow-2xl shadow-black/40
           overflow-hidden animate-fade-in
         ">

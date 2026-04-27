@@ -1,4 +1,5 @@
 import "./globals.css";
+import { SidebarProvider } from "@/lib/sidebar-context";
 
 export const metadata = {
   title: "InsightFlow — AI Sales Dashboard",
@@ -17,7 +18,9 @@ export default function RootLayout({ children }) {
         />
       </head>
       <body className="bg-slate-950 text-slate-100 min-h-screen antialiased">
-        {children}
+        <SidebarProvider>
+          {children}
+        </SidebarProvider>
       </body>
     </html>
   );

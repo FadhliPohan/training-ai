@@ -2,9 +2,15 @@
 
 import { Bell, Search, RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { getUser } from "@/lib/auth";
 
 export default function Topbar({ title = "Dashboard", onRefresh }) {
   const [refreshing, setRefreshing] = useState(false);
+  const user = getUser();
+
+  const initials = user?.name
+    ? user.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+    : "AD";
 
   const handleRefresh = () => {
     setRefreshing(true);
@@ -27,12 +33,12 @@ export default function Topbar({ title = "Dashboard", onRefresh }) {
 
       {/* Right: actions */}
       <div className="flex items-center gap-2">
-        {/* Search (decorative for now) */}
+        {/* Search */}
         <div className="hidden md:flex items-center gap-2 bg-slate-800/60 border border-slate-700 rounded-xl px-3 py-2 w-52">
           <Search size={14} className="text-slate-500" />
           <input
             type="text"
-            placeholder="Cari laporan..."
+            placeholder="Cari..."
             className="bg-transparent text-sm text-slate-300 placeholder-slate-600 outline-none w-full"
           />
         </div>
@@ -54,7 +60,7 @@ export default function Topbar({ title = "Dashboard", onRefresh }) {
 
         {/* Avatar */}
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-600 flex items-center justify-center text-xs font-bold text-white cursor-pointer ml-1 hover:ring-2 hover:ring-indigo-500/50 transition-all">
-          AD
+          {initials}
         </div>
       </div>
     </header>

@@ -37,8 +37,8 @@ export const authAPI = {
 export const reportAPI = {
   get: ({ type = "daily-sales", from, to, salesId, mode = "ai" } = {}) => {
     const qs = new URLSearchParams({ type, mode });
-    if (from)    qs.set("from", from);
-    if (to)      qs.set("to", to);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
     if (salesId) qs.set("sales_id", salesId);
     return apiFetch(`/api/v1/reports?${qs}`);
   },
@@ -52,7 +52,7 @@ export const usersAPI = {
   update: (id, data) =>
     apiFetch(`/api/v1/users/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deactivate: (id) =>
-    apiFetch(`/api/v1/users/${id}`, { method: "DELETE" }),
+    apiFetch(`/api/v1/users/${id}`, { method: "PATCH" }), // BUG-006 fix: PATCH not DELETE
 };
 
 // ─── Products ──────────────────────────────────────────────────────────────
@@ -63,6 +63,18 @@ export const produkAPI = {
     apiFetch("/api/v1/produk", { method: "POST", body: JSON.stringify(data) }),
   update: (id, data) =>
     apiFetch(`/api/v1/produk/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deactivate: (id) =>
+    apiFetch(`/api/v1/produk/${id}`, { method: "PATCH" }), // BUG-007 fix: PATCH for toggle aktif
+};
+
+// ─── Customers ─────────────────────────────────────────────────────────────
+export const customerAPI = {
+  list: () => apiFetch("/api/v1/customer"),
+  getById: (id) => apiFetch(`/api/v1/customer/${id}`),
+  create: (data) =>
+    apiFetch("/api/v1/customer", { method: "POST", body: JSON.stringify(data) }),
+  update: (id, data) =>
+    apiFetch(`/api/v1/customer/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 };
 
 // ─── Settings ──────────────────────────────────────────────────────────────
@@ -84,7 +96,7 @@ export function fromPeriod(period) {
   const now = new Date();
   const to = now.toISOString().split("T")[0];
   const d = new Date(now);
-  if (period === "7d")  d.setDate(d.getDate() - 7);
+  if (period === "7d") d.setDate(d.getDate() - 7);
   if (period === "30d") d.setDate(d.getDate() - 30);
   if (period === "90d") d.setDate(d.getDate() - 90);
   const from = d.toISOString().split("T")[0];
