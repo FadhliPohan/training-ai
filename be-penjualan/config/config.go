@@ -4,22 +4,24 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
 
 // Config holds all application configuration values loaded from environment variables.
 type Config struct {
-	AppEnv      string
-	AppPort     string
-	DatabaseURL string
-	JWTSecret   string
-	N8NBaseURL  string
-	N8NWebhookSecret       string
+	AppEnv                  string
+	AppPort                 string
+	DatabaseURL             string
+	JWTSecret               string
+	AutoMigrate             bool
+	N8NBaseURL              string
+	N8NWebhookSecret        string
 	N8NDashboardWebhookPath string
 	N8NChatWebhookPath      string
-	FrontendURL string
-	TelegramBotToken string
+	FrontendURL             string
+	TelegramBotToken        string
 }
 
 var App Config
@@ -37,6 +39,7 @@ func Load() {
 		AppPort:                 getEnv("APP_PORT", "8080"),
 		DatabaseURL:             mustEnv("DATABASE_URL"),
 		JWTSecret:               mustEnv("JWT_SECRET"),
+		AutoMigrate:             false, // will be set after env-aware default is computed
 		N8NBaseURL:              getEnv("N8N_BASE_URL", "http://localhost:5678"),
 		N8NWebhookSecret:        getEnv("N8N_WEBHOOK_SECRET", ""),
 		N8NDashboardWebhookPath: getEnv("N8N_DASHBOARD_WEBHOOK_PATH", "/webhook/dashboard-ai"),
@@ -44,6 +47,12 @@ func Load() {
 		FrontendURL:             getEnv("FRONTEND_URL", "http://localhost:3000"),
 		TelegramBotToken:        getEnv("TELEGRAM_BOT_TOKEN", ""),
 	}
+
+	// Default behavior:
+	// - production/staging: run auto-migration
+	// - development: skip auto-migration
+	autoMigrateDefault := App.AppEnv == "production" || App.AppEnv == "staging"
+	App.AutoMigrate = getEnvBool("AUTO_MIGRATE", autoMigrateDefault)
 
 	validateJWTSecret(App.JWTSecret)
 }
@@ -77,6 +86,24 @@ func getEnvInt(key string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+// getEnvBool returns boolean env value or fallback.
+func getEnvBool(key string, fallback bool) bool {
+	val := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
+	if val == "" {
+		return fallback
+	}
+
+	switch val {
+	case "1", "true", "yes", "y", "on":
+		return true
+	case "0", "false", "no", "n", "off":
+		return false
+	default:
+		log.Printf("[config] invalid boolean value for %q: %q, using fallback %v", key, val, fallback)
+		return fallback
+	}
 }
 
 // validateJWTSecret enforces a minimum key length of 32 characters.

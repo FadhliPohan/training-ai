@@ -2,6 +2,8 @@ package router
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/swagger"
+	"insightflow/be-penjualan/internal/handler"
 	"insightflow/be-penjualan/internal/middleware"
 )
 
@@ -18,15 +20,15 @@ func Setup(app *fiber.App) {
 		return c.JSON(fiber.Map{"status": "ok", "service": "insightflow-api"})
 	})
 
+	// ---- Swagger UI ----
+	app.Get("/swagger/*", swagger.HandlerDefault)
+
 	// ---- Auth (public) ----
 	auth := api.Group("/auth")
 	{
-		// handlers will be registered here once implemented:
-		// auth.Post("/login", authHandler.Login)
-		// auth.Post("/logout", authHandler.Logout)
-		// auth.Post("/register", authHandler.Register)  // customer self-registration
-		// auth.Get("/me", middleware.AuthRequired, authHandler.Me)
-		_ = auth // placeholder to avoid unused variable error
+		// Import and register auth handler
+		authHandler := handler.NewAuthHandler()
+		authHandler.RegisterRoutes(auth)
 	}
 
 	// ---- Public Catalogue (no auth needed) ----

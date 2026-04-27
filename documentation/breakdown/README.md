@@ -1,89 +1,173 @@
 # InsightFlow — Work Breakdown Index
 
 > **Proyek:** InsightFlow Self-Service AI Dashboard Penjualan Pakaian  
-> **Versi Dokumen:** v1.0  
-> **Terakhir Diperbarui:** April 2026
+> **Versi Dokumen:** v2.0  
+> **Terakhir Diperbarui:** 24 April 2026
 
 ---
 
-## Tentang Dokumen Ini
+## 📚 Dokumentasi Lengkap
 
-Folder `breakdown/` berisi detail pengerjaan setiap area dari Work Breakdown Structure (WBS) proyek InsightFlow. Setiap file merupakan panduan teknis dan operasional untuk satu area pengerjaan.
+### 🎯 Sprint Planning & Execution
 
----
-
-## Daftar Area Breakdown
-
-| Area | File | Deskripsi Singkat |
+| Dokumen | Tujuan | Kapan Digunakan |
 |---|---|---|
-| **Area 1** | [area-1-api-documentation.md](./area-1-api-documentation.md) | Kontrak API, format standar, daftar endpoint, deliverables dokumentasi |
-| **Area 2** | [area-2-product-requirements.md](./area-2-product-requirements.md) | Klarifikasi PRD, pertanyaan stakeholder, daftar laporan dashboard |
-| **Area 3** | [area-3-backend-architecture.md](./area-3-backend-architecture.md) | Setup Golang Fiber, DB migration, Auth, Master Data, Transaksi, AI integration |
-| **Area 4** | [area-4-frontend-uiux.md](./area-4-frontend-uiux.md) | Setup Next.js, Design System, semua halaman & komponen |
-| **Area 5** | [area-5-security.md](./area-5-security.md) | Auth, Authorization, Input Validation, Data Protection, Infrastructure |
-| **Area 6** | [area-6-n8n-ai-workflows.md](./area-6-n8n-ai-workflows.md) | 5 workflow n8n: Dashboard AI, Chat SSE, Telegram Daily, Alert, Q&A |
+| **[SIMPLIFIED_SPRINT_PLAN.md](../SIMPLIFIED_SPRINT_PLAN.md)** | **Panduan harian Sprint 1 yang disederhanakan** | **Untuk Backend Developer (Anda!)** |
 
 ---
 
-## Urutan Pengerjaan (Gantt Overview)
+## 📋 Work Breakdown Structure
 
-```mermaid
-gantt
-    title Urutan Kerja InsightFlow MVP
-    dateFormat YYYY-MM-DD
-    section Minggu 1-2 Fondasi
-    API Docs + Klarifikasi PRD      :w1a, 2026-05-01, 7d
-    DB Migration + Backend Setup    :w1b, 2026-05-01, 7d
-    Design System + Base Components :w1c, 2026-05-01, 7d
-    n8n Setup + Credentials         :w1d, 2026-05-01, 5d
-    section Minggu 3-4 Core
-    Backend Auth + CRUD + Transaksi :w2a, after w1b, 14d
-    Frontend Login + Master + Order :w2b, after w1c, 14d
-    n8n Dashboard AI Workflow       :w2c, after w1d, 10d
-    section Minggu 5-6 AI dan Chat
-    Backend Dashboard + SSE Chat    :w3a, after w2a, 10d
-    Frontend Dashboard + ChatWidget :w3b, after w2b, 10d
-    n8n Chat + Daily + Alert        :w3c, after w2c, 10d
-    section Minggu 7-8 Polish
-    n8n Telegram QnA Per-Role       :w4a, after w3c, 7d
-    Security Review + Hardening     :w4b, after w3a, 7d
-    Frontend Settings + Export PDF  :w4c, after w3b, 7d
-    UAT + Bug Fix + Go-Live         :w4d, after w4a, 7d
+### Area Breakdown (Technical)
+
+| Area | File | Deskripsi | Status |
+|---|---|---|---|
+| **Area 1** | [area-1-api-documentation.md](./area-1-api-documentation.md) | Kontrak API, format standar, 21 endpoint | 🟡 In Progress |
+| **Area 2** | [area-2-product-requirements.md](./area-2-product-requirements.md) | Klarifikasi PRD, 8 laporan dashboard | ✅ Complete |
+| **Area 3** | [area-3-backend-architecture.md](./area-3-backend-architecture.md) | Go Fiber, DB migration, Auth, CRUD | 🟡 In Progress |
+| **Area 4** | [area-4-frontend-uiux.md](./area-4-frontend-uiux.md) | Next.js 14, Design System, 20+ halaman | 🔴 Not Started |
+| **Area 5** | [area-5-security.md](./area-5-security.md) | Auth, Authorization, Security hardening | 🔴 Not Started |
+| **Area 6** | [area-6-n8n-ai-workflows.md](./area-6-n8n-ai-workflows.md) | 5 workflow n8n + AI integration | 🔴 Not Started |
+
+---
+
+## 🗺️ Quick Navigation
+
+```
+documentation/
+├── README.md                      ← You are here
+├── Self_Service_AI_Dashboard_PRD.md
+├── work_breakdown.md
+├── task_plan.md
+├── implementation_sprint_plan.md
+│
+├── 🆕 SPRINT_IMPLEMENTATION_PLAN.md    ← Master sprint plan (6 sprints)
+├── 🆕 SPRINT_TRACKER.md                ← Daily progress tracker
+├── 🆕 SPRINT_1_KICKOFF.md              ← Sprint 1 execution guide
+│
+└── breakdown/
+    ├── area-1-api-documentation.md
+    ├── area-2-product-requirements.md
+    ├── area-3-backend-architecture.md
+    ├── area-4-frontend-uiux.md
+    ├── area-5-security.md
+    └── area-6-n8n-ai-workflows.md
 ```
 
 ---
 
-## Dependency Map
+## 📊 Project Status Overview
 
-```
-Area 1 (API Docs) ──→ Area 3 Backend (mulai coding)
-                  ──→ Area 4 Frontend (mock data dulu)
+### Current Sprint: **Sprint 1** (27 Apr - 08 Mei 2026)
 
-Area 3 (DB Migration) ──→ Area 3 Backend CRUD
-                          ──→ Area 6 n8n (PostgreSQL nodes)
-                          ──→ Area 4 Frontend (data real)
+**Theme:** Backend Auth + Master Data  
+**Progress:** ~5% complete  
+**Focus:** Authentication system, Role-based access, Produk & Customer CRUD
 
-Area 6 (n8n Workflow Dashboard) ──→ Area 3 Backend /reports (integrasi)
-                                    ──→ Area 4 Frontend Dashboard
+| Phase | Completion | Status |
+|---|---|---|
+| Sprint 0 (Foundation) | 100% | ✅ Complete |
+| Sprint 1 (Auth + Master) | 5% | 🟡 In Progress |
+| Sprint 2 (Transactions) | 0% | 🔴 Not Started |
+| Sprint 3 (Reports + n8n) | 0% | 🔴 Not Started |
+| Sprint 4 (Frontend) | 0% | 🔴 Not Started |
+| Sprint 5 (Dashboard) | 0% | 🔴 Not Started |
+| Sprint 6 (Security + UAT) | 0% | 🔴 Not Started |
 
-Area 6 (n8n Workflow Chat) ──→ Area 3 Backend SSE /chat/stream
-                                ──→ Area 4 Frontend ChatWidget
-
-Area 6 (n8n Workflow Telegram) ──→ Independent, paralel setelah DB siap
-
-Area 5 (Security Review) ──→ Setelah semua fitur core selesai
-                         ──→ Sebelum UAT dan go-live
-```
+**Overall Project Completion:** ~5%
 
 ---
 
-## Dokumen Terkait
+## 🎯 Key Milestones
 
-| Dokumen | Lokasi |
+| Date | Milestone | Owner |
+|---|---|---|
+| 26 Apr 2026 | ✅ Sprint 0 Complete (Foundation) | Backend Team |
+| 08 Mei 2026 | Sprint 1 Review + Demo | All Team |
+| 22 Mei 2026 | Sprint 2 Complete (Transactions) | Backend Team |
+| 05 Jun 2026 | Sprint 3 Complete (Reports + n8n) | Backend + AI |
+| 19 Jun 2026 | Sprint 4 Complete (Frontend Foundation) | Frontend Team |
+| 03 Jul 2026 | Sprint 5 Complete (Dashboard AI) | All Team |
+| 17 Jul 2026 | **Go-Live Decision** | Stakeholders |
+
+---
+
+## 🔗 External Resources
+
+| Resource | Link |
 |---|---|
-| PRD Lengkap | [Self_Service_AI_Dashboard_PRD.md](../Self_Service_AI_Dashboard_PRD.md) |
-| Work Breakdown Utama | [work_breakdown.md](../work_breakdown.md) |
+| Backend Repository | `/home/sandi/PUSRI/training-ai/be-penjualan/` |
+| Frontend Repository | `/home/sandi/PUSRI/training-ai/fe-penjualan/` |
+| AGENTS.md (Project Rules) | `/home/sandi/PUSRI/training-ai/be-penjualan/.agents/AGENTS.md` |
 
 ---
 
-*Folder ini adalah bagian dari living document InsightFlow. Update setiap ada perubahan scope atau teknis.*
+## 📞 Team Contacts
+
+| Role | Responsibilities | Sprint Focus |
+|---|---|---|
+| Backend Lead | API design, architecture, code review | S1-S3, S6 |
+| Backend Developer | Implementation, testing | S1-S3, S6 |
+| Frontend Lead | UI architecture, components | S4-S6 |
+| Frontend Developer | Implementation | S4-S6 |
+| DevOps | Infrastructure, CI/CD, deployment | S0, S3, S6 |
+| n8n/AI Specialist | Workflow creation, LLM integration | S3, S5 |
+| Product Manager | Stakeholder management, prioritization | All sprints |
+
+---
+
+## 🚀 Getting Started
+
+### For New Team Members
+
+1. **Read the PRD** → [Self_Service_AI_Dashboard_PRD.md](../Self_Service_AI_Dashboard_PRD.md)
+2. **Review Sprint Plan** → [SPRINT_IMPLEMENTATION_PLAN.md](../SPRINT_IMPLEMENTATION_PLAN.md)
+3. **Check Daily Tracker** → [SPRINT_TRACKER.md](../SPRINT_TRACKER.md)
+4. **Follow Area Breakdown** → Start with your area (Backend → Area 3, Frontend → Area 4)
+
+### For Backend Developers
+
+Start here: [SPRINT_1_KICKOFF.md](../SPRINT_1_KICKOFF.md)
+
+### For Frontend Developers
+
+Start here: Area 4 breakdown (will be activated in Sprint 4)
+
+### For Stakeholders
+
+Review: [SPRINT_IMPLEMENTATION_PLAN.md](../SPRINT_IMPLEMENTATION_PLAN.md) (Section 1 & 2)  
+Check progress: [SPRINT_TRACKER.md](../SPRINT_TRACKER.md) (Updated twice weekly)
+
+---
+
+## 📝 Document History
+
+| Version | Date | Changes | Author |
+|---|---|---|---|
+| v3.0 | 29 Apr 2026 | Simplified for developer focus | Sandi |
+| v2.0 | 24 Apr 2026 | Added sprint planning documents | Engineering Team |
+| v1.0 | Apr 2026 | Initial work breakdown structure | Engineering Team |
+
+---
+
+## ✅ Next Actions
+
+**Today (29 Apr 2026):**
+- [ ] Complete `POST /auth/logout` endpoint
+- [ ] Complete `GET /auth/me` endpoint
+- [ ] Implement RoleGuard middleware
+- [ ] Implement Product GET endpoint
+- [ ] Implement Product POST endpoint
+
+**This Week (29 Apr - 08 Mei):**
+- [ ] Complete all Sprint 1 tasks
+- [ ] Review [SIMPLIFIED_SPRINT_PLAN.md](../SIMPLIFIED_SPRINT_PLAN.md) daily
+- [ ] Prepare for Sprint 1 Review (08 Mei)
+
+**Next Week (11-22 Mei):**
+- [ ] Start Sprint 2: Transaction Processing
+
+---
+
+*This is a living document. Update regularly to reflect project progress.*  
+**Last Updated:** 27 April 2026

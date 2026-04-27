@@ -1,0 +1,22 @@
+basePath: /api/v1
+host: localhost:8080
+info:
+  contact:
+    email: support@insightflow.id
+    name: API Support
+    url: http://www.swagger.io/support
+  description: InsightFlow Self-Service AI Dashboard for Clothing Sales
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: InsightFlow API
+  version: "1.0"
+paths: {}
+securityDefinitions:
+  JWT:
+    description: JWT token in the format "Bearer <token>"
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -27,7 +27,7 @@
   - `N8N_URL` — URL internal n8n webhook
   - `TELEGRAM_TOKEN` — Token Telegram Bot
 - [ ] PostgreSQL connection pool menggunakan `pgxpool`
-- [ ] Database migration tool: `golang-migrate`
+- [x] Database migration tool: `golang-migrate`
 
 ---
 

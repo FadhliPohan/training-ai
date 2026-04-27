@@ -1,3 +1,23 @@
+//	@title			InsightFlow API
+//	@version		1.0
+//	@description	InsightFlow Self-Service AI Dashboard for Clothing Sales
+//	@termsOfService	http://swagger.io/terms/
+
+//	@contact.name	API Support
+//	@contact.url	http://www.swagger.io/support
+//	@contact.email	support@insightflow.id
+
+//	@license.name	Apache 2.0
+//	@license.url	http://www.apache.org/licenses/LICENSE-2.0.html
+
+//	@host		localhost:8080
+//	@BasePath	/api/v1
+
+//	@securityDefinitions.apikey	JWT
+//	@in							header
+//	@name						Authorization
+//	@description				JWT token in the format "Bearer <token>"
+
 package main
 
 import (
@@ -33,6 +53,15 @@ func main() {
 	// ---- Database ----
 	database.Connect()
 	defer database.Close()
+
+	// Run auto-migration only for staging/production by default.
+	// Development skips migration unless AUTO_MIGRATE=true is explicitly set.
+	if config.App.AutoMigrate {
+		log.Info().Str("env", config.App.AppEnv).Msg("auto-migration enabled, running startup migration")
+		database.RunAutoMigrate()
+	} else {
+		log.Info().Str("env", config.App.AppEnv).Msg("auto-migration skipped for this environment")
+	}
 
 	// ---- Fiber App ----
 	app := fiber.New(fiber.Config{

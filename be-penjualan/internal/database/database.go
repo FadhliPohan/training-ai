@@ -5,8 +5,12 @@ import (
 	"log"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"insightflow/be-penjualan/config"
+	"insightflow/be-penjualan/internal/domain"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 // Pool is the global PostgreSQL connection pool.
@@ -49,4 +53,41 @@ func Close() {
 		Pool.Close()
 		log.Println("[database] connection pool closed")
 	}
+}
+
+// RunAutoMigrate performs schema setup and model-based migration via GORM.
+// Runtime query path tetap menggunakan pgxpool; GORM dipakai khusus migrasi.
+func RunAutoMigrate() {
+	db, err := gorm.Open(postgres.Open(config.App.DatabaseURL), &gorm.Config{})
+	if err != nil {
+		log.Fatalf("[database] auto-migrate failed: cannot open gorm connection: %v", err)
+	}
+
+	setupStatements := []string{
+		`CREATE EXTENSION IF NOT EXISTS pgcrypto`,
+		`CREATE SCHEMA IF NOT EXISTS app`,
+		`CREATE SCHEMA IF NOT EXISTS bisnis`,
+	}
+	for _, stmt := range setupStatements {
+		if execErr := db.Exec(stmt).Error; execErr != nil {
+			log.Fatalf("[database] auto-migrate schema setup failed: %v", execErr)
+		}
+	}
+
+	if err := db.AutoMigrate(
+		&domain.User{},
+		&domain.TelegramConfig{},
+		&domain.AnomalyConfig{},
+		&domain.SavedDashboard{},
+		&domain.Produk{},
+		&domain.Customer{},
+		&domain.Order{},
+		&domain.OrderDetail{},
+		&domain.Pembayaran{},
+		&domain.Pengiriman{},
+	); err != nil {
+		log.Fatalf("[database] auto-migrate failed during model migration: %v", err)
+	}
+
+	log.Println("[database] auto-migration (gorm) finished successfully")
 }

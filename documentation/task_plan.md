@@ -1,262 +1,267 @@
-# Task Plan Implementasi — InsightFlow Self-Service AI Dashboard
+# Sprint Task Planning — InsightFlow (Single Source of Truth)
 
-> **Status Keseluruhan:** 🟡 Sedang Berjalan — `~18%`  
-> **Fokus Saat Ini:** Backend — Fase 2 (Auth & Master Data)  
-> **Terakhir Diperbarui:** 24 April 2026
-
----
-
-## Legenda Status
-
-| Simbol | Arti |
-|---|---|
-| `[ ]` | Belum dikerjakan |
-| `[/]` | Sedang dikerjakan |
-| `[x]` | Selesai |
-| `%` | Persentase penyelesaian per fase |
+> **Dokumen sprint resmi (satu-satunya):** gunakan file ini untuk planning dan tracking progress.  
+> **Terakhir diperbarui:** 24 April 2026  
+> **Status saat ini:** Pre-Sprint 1 (backlog sinkron dengan backend + auto-migrate env policy aktif)
 
 ---
 
-## 📊 Ringkasan Progres
+## 1) Konsolidasi Dokumen
 
-| Fase | Area | Progress | Status |
+Dokumen ini merangkum materi dari:
+- `Self_Service_AI_Dashboard_PRD.md`
+- `work_breakdown.md`
+- `SIMPLIFIED_SPRINT_PLAN.md`
+- `implementation_sprint_plan.md`
+- `SPRINT_1_PLANNING_MEETING.md`
+- `TODAY_TASKS.md`
+
+Catatan:
+- PRD tetap dipakai sebagai referensi requirement produk.
+- Untuk planning eksekusi sprint, hanya pakai file ini.
+
+---
+
+## 2) Backend Current State (Audit Kode Nyata)
+
+Audit dilakukan langsung ke `be-penjualan/` pada 24 April 2026.
+
+### Endpoint aktif saat ini
+
+- `GET /health`
+- `GET /swagger/*`
+- `POST /api/v1/auth/login`
+
+### Status implementasi backend
+
+| Area | Status | Evidence |
+|---|---|---|
+| App bootstrap (Fiber, logger, CORS, timeout, graceful shutdown) | ✅ Selesai | `cmd/main.go` |
+| Config env (`DATABASE_URL`, `JWT_SECRET`, n8n vars) | ✅ Selesai | `config/config.go` |
+| DB connection pool (pgx) | ✅ Selesai | `internal/database/database.go` |
+| Auto-migrate startup (GORM model + tag) | ✅ Selesai | `internal/database/database.go` + `internal/domain/domain.go` |
+| Policy migration per environment | ✅ Selesai | `config/config.go` + `cmd/main.go` (`staging/production` run, `development` skip) |
+| Domain model (`User`, `Produk`, `Order`, dll) | ✅ Selesai | `internal/domain/domain.go` |
+| DTO auth/product/customer/order/payment/report/settings | ✅ Selesai (scaffold) | `internal/dto/*.go` |
+| Response envelope standard | ✅ Selesai | `internal/response/response.go` |
+| Middleware `AuthRequired`, `RoleGuard`, `ViewerReadOnly` | ✅ Selesai | `internal/middleware/auth.go` |
+| Auth `POST /auth/login` | ✅ Selesai | `internal/handler/auth/login.go` |
+| Auth `POST /auth/logout`, `GET /auth/me`, `POST /auth/register` | ❌ Belum | route masih comment |
+| Produk, Customer, Users, Orders, Payments, Shipments handlers | ❌ Belum | route masih comment |
+| Reports, Chat SSE, Settings Telegram | ❌ Belum | route masih comment |
+| Unit/feature test stabil | ✅ Dasar stabil | `go test ./...` lulus, panic `database.Pool` nil sudah ditangani |
+
+### Gap kritikal yang mempengaruhi sprint
+
+- Layer repository/service belum dibentuk; login masih query DB langsung di handler.
+- Belum ada validasi end-to-end auto-migrate di environment staging/production sesungguhnya.
+
+---
+
+## 3) Sprint Timeline (2 Minggu per Sprint)
+
+| Sprint | Periode | Fokus | Target Kumulatif |
 |---|---|---|---|
-| **Fase 0** | Persiapan & Klarifikasi | `100%` ✅ | 🟢 Selesai |
-| **Fase 1** | Backend — Setup & Fondasi | `90%` | 🟡 Hampir Selesai |
-| **Fase 2** | Backend — Auth & Master Data | `0%` | 🔴 Belum |
-| **Fase 3** | Backend — Transaksi | `0%` | 🔴 Belum |
-| **Fase 4** | Backend — Dashboard & AI | `0%` | 🔴 Belum |
-| **Fase 5** | n8n — Setup & Workflows | `0%` | 🔴 Belum |
-| **Fase 6** | Frontend — Setup & Design System | `0%` | 🔴 Belum |
-| **Fase 7** | Frontend — Halaman Toko & Auth | `0%` | 🔴 Belum |
-| **Fase 8** | Frontend — Admin & Transaksi | `0%` | 🔴 Belum |
-| **Fase 9** | Frontend — Dashboard & AI | `0%` | 🔴 Belum |
-| **Fase 10** | Security Hardening | `0%` | 🔴 Belum |
-| ~~**Fase 11**~~ | ~~Testing~~ | ~~ditunda~~ | ⏸️ Ditunda |
-
-**Total Keseluruhan: `~30 / ~128 task` selesai**
+| Sprint 1 | 27 Apr 2026 - 08 Mei 2026 | Stabilkan fondasi backend + Auth lengkap + Master data dasar | 30% |
+| Sprint 2 | 11 Mei 2026 - 22 Mei 2026 | Transaksi order/payment/shipment | 50% |
+| Sprint 3 | 25 Mei 2026 - 05 Jun 2026 | Reports + Integrasi n8n + Telegram settings | 68% |
+| Sprint 4 | 08 Jun 2026 - 19 Jun 2026 | Frontend foundation + auth + public catalog | 80% |
+| Sprint 5 | 22 Jun 2026 - 03 Jul 2026 | Frontend admin/sales + dashboard AI | 92% |
+| Sprint 6 | 06 Jul 2026 - 17 Jul 2026 | Security, QA, UAT, release candidate | 100% |
 
 ---
 
-## FASE 0 — Persiapan & Klarifikasi PRD
+## 4) Sprint Backlog Terpadu
 
-> **Target:** Semua pertanyaan stakeholder terjawab, API docs tersusun, environment siap.  
-> **Progress: `100%` ✅ Selesai**
+## Sprint 1 — Backend Foundation Hardening + Auth + Master Data Dasar
 
-### 0.1 Klarifikasi Stakeholder ✅
+**Goal:** backend siap dipakai frontend untuk auth dan master data inti.
 
-- [x] **#1 Varian produk:** Satu produk dengan field `ukuran` & `warna` *(bukan SKU terpisah per kombinasi)*
-- [x] **#2 Customer auth:** Customer dapat register & login sendiri *(perlu endpoint `POST /auth/register`)*
-- [x] **#3 Laporan MVP:** Semua 8 laporan masuk MVP (`daily-sales`, `monthly-sales`, `top-products`, `sales-by-person`, `order-funnel`, `category-breakdown`, `low-stock`, `revenue-trend`)
-- [x] **#4 Role `viewer`:** Akses sama seperti admin tetapi **read-only** — tidak bisa tambah/edit/hapus data apapun
-- [x] **#5 Threshold anomali:** **Per metrik** *(butuh tabel `app.anomaly_config` terpisah, bukan satu kolom threshold di `telegram_config`)*
-- [x] **#6 Daily summary:** Dikirim ke **grup Telegram** (bukan per-user individual)
-- [x] **#7 Sales di web:** Sales dapat melihat **semua order tim** *(tidak dibatasi `WHERE sales_id = user_id` di web)*
+### A. Fondasi & stabilitas
 
-> [!IMPORTANT]
-> **Implikasi Teknis dari Jawaban di Atas:**
-> - **#2:** Tambahkan endpoint `POST /auth/register` untuk customer. Tabel `bisnis.tbl_customer` perlu field `password` (bcrypt) dan `aktif`.
-> - **#4:** Middleware `RoleGuard` perlu membedakan antara akses **write** dan **read**. Semua endpoint `POST/PUT/PATCH/DELETE` harus diblokir untuk role `viewer`.
-> - **#5:** Skema DB perlu tabel baru `app.anomaly_config` dengan kolom `metric_key` dan `threshold_pct` per metrik. Kolom `threshold` di `telegram_config` tidak cukup.
+- [x] Setup Fiber app + global middleware + graceful shutdown
+- [x] Setup config + DB pool
+- [x] Setup auto-migrate GORM model-based di startup
+- [x] Terapkan policy env: staging/production run, development skip
+- [ ] Validasi auto-migrate end-to-end di environment staging
+- [ ] Seed manager + sales + customer dummy
+- [x] Perbaiki test agar tidak panic jika DB belum init
 
-### 0.2 API Documentation
+### B. Auth module
 
-- [x] Format respons standar `{ success, message, data, errors }` — diimplementasikan di `internal/response/response.go`
-- [x] Semua error code (400, 401, 403, 404, 409, 500) — tersedia di response helpers
-- [ ] Setup Postman Collection atau OpenAPI 3.0
-- [ ] Dokumentasikan semua 21 endpoint dengan contoh request + response
-- [ ] Hosting Swagger UI di `/api/docs`
-- [ ] Commit Postman Collection `.json` ke repo
+- [x] `POST /auth/login`
+- [ ] `POST /auth/logout`
+- [ ] `GET /auth/me`
+- [ ] `POST /auth/register` (customer self-registration sesuai PRD)
+- [ ] Refactor login ke service/repository (hindari query langsung di handler)
 
-### 0.3 Setup Repository & Environment
+### C. Master data module
 
-- [x] Inisialisasi Git repository dengan struktur folder `be-penjualan/` dan `fe-penjualan/`
-- [x] Buat `.gitignore` (`.env` sudah masuk)
-- [x] Buat `docker-compose.yml` untuk PostgreSQL + n8n (development)
-- [x] Buat `.env.example` dengan semua variable yang dibutuhkan
+- [ ] Produk: `GET /produk`, `GET /produk/:id`, `POST /produk`, `PUT /produk/:id`, `PATCH /produk/:id`
+- [ ] Customer: `GET /customer`, `GET /customer/:id`, `POST /customer`, `PUT /customer/:id`
+- [ ] Users: `GET /users`, `GET /users/:id`, `POST /users`, `PUT /users/:id`, `PATCH /users/:id`
 
----
+### D. Acceptance criteria Sprint 1
 
-## FASE 1 — Backend: Setup & Fondasi
-
-> **Target:** Go Fiber project berjalan, database schema terbuat, migration tools siap.  
-> **Progress: `90%`** ✅ Build sukses | Lokasi: `be-penjualan/`
-
-### 1.1 Init Project Go Fiber
-
-- [x] `go mod init insightflow/be-penjualan`
-- [x] Install dependency utama:
-  - [x] `github.com/gofiber/fiber/v2` v2.52.12
-  - [x] `github.com/jackc/pgx/v5` v5.9.2 (pgxpool)
-  - [x] `github.com/golang-migrate/migrate/v4` v4.19.1
-  - [x] `github.com/golang-jwt/jwt/v5` v5.3.1
-  - [x] `github.com/go-playground/validator/v10` v10.30.2
-  - [x] `github.com/rs/zerolog` v1.35.1
-  - [x] `github.com/joho/godotenv` v1.5.1
-  - [x] `golang.org/x/crypto` (bcrypt)
-- [x] Setup struktur folder (`cmd/`, `internal/`, `config/`, `db/migrations/`)
-- [x] Setup konfigurasi dari `.env` — `config/config.go`
-- [x] Setup PostgreSQL connection pool — `internal/database/database.go`
-
-### 1.2 Database Migration
-
-- [x] Setup migration tool (`golang-migrate`) — tersedia di `go.mod`
-- [x] Migration 001: `CREATE SCHEMA app` + `CREATE SCHEMA bisnis`
-- [x] Migration 002: `app.users`, `app.telegram_config`, **`app.anomaly_config`** *(per-metric threshold)*, `app.saved_dashboards`
-- [x] Migration 003: `bisnis.tbl_produk`, `bisnis.tbl_customer`, `bisnis.tbl_order`, `bisnis.tbl_order_detail`, `bisnis.tbl_pembayaran`, `bisnis.tbl_pengiriman`
-- [x] Migration 004: Seed data (admin default, anomaly config, 10 sample produk)
-- [ ] Jalankan migration di database (menunggu PostgreSQL tersedia)
-
-### 1.3 Indexing Database
-
-- [x] Index `tbl_order(tanggal)`, `tbl_order(sales_id)`, `tbl_order(status)`, `tbl_order(customer_id)` — di migration 003
-- [x] Index `tbl_produk(kategori_pakaian)`, `tbl_produk(aktif)` — di migration 003
-- [x] Index `tbl_order_detail(order_id)`, `tbl_order_detail(produk_id)` — di migration 003
-- [x] Index `tbl_pembayaran(order_id)` — di migration 003
-- [x] Index `users(telegram_user_id)` — di migration 002
-
-### 1.4 Seeder Data Development
-
-- [x] Seeder: user admin default (`admin@insightflow.id`) — migration 004
-- [x] Seeder: 10 produk pakaian dummy — migration 004
-- [ ] Seeder: user manager + 3 sales
-- [ ] Seeder: customer dummy
-- [ ] Seeder: sample order + detail + pembayaran + pengiriman
-
-### 1.5 Non-Functional Setup
-
-- [x] `GET /health` — health check endpoint (di `cmd/main.go`)
-- [x] Structured logging dengan `zerolog` — `cmd/main.go`
-- [ ] Rate limiting middleware (Fiber) — *akan ditambahkan ke router*
-- [x] Request timeout 30 detik — dikonfigurasi di Fiber config
-- [x] Graceful shutdown handler (SIGTERM) — `cmd/main.go`
-- [x] CORS middleware (whitelist frontend URL) — `cmd/main.go`
-
-**Tambahan yang sudah selesai:**
-- [x] `internal/domain/domain.go` — semua struct domain (User, Produk, Customer, Order, dll)
-- [x] `internal/middleware/auth.go` — `AuthRequired`, `RoleGuard`, `ViewerReadOnly`
-- [x] `internal/response/response.go` — semua helper response (OK, Created, BadRequest, dll)
-- [x] `internal/router/router.go` — struktur semua route group
-- [x] `go build ./...` — ✅ Build sukses
+- [ ] Admin login, ambil profile (`/auth/me`), dan logout berhasil.
+- [ ] Viewer tidak bisa `POST/PUT/PATCH/DELETE`.
+- [ ] CRUD produk & customer endpoint minimal happy-path berjalan.
+- [ ] Migration + seed dapat dijalankan tanpa error.
+- [ ] Test tidak panic untuk skenario auth dasar.
 
 ---
 
-## FASE 2 — Backend: Auth & Master Data
+## Sprint 2 — Transaksi Penjualan
 
-> **Target:** Login/logout berfungsi, CRUD Produk/Customer/User selesai.  
-> **Progress: `0%`**
+**Goal:** siklus order dari create sampai paid/closed tersedia via API.
 
-### 2.1 Modul Auth
+- [ ] Order: list, detail, create, confirm, cancel
+- [ ] Payment: create, verify
+- [ ] Shipment: create, update status
+- [ ] Validasi state transition order (pending -> confirmed -> paid -> shipped -> closed)
+- [ ] Atomic transaction saat create order + detail
 
-- [ ] Domain struct: `User`, JWT Claims
-- [ ] Repository: `FindUserByEmail`, `FindUserByID`
-- [ ] Service: `Login` (validasi email+password, generate JWT), `GetProfile`
-- [ ] Handler: `POST /auth/login`
-- [ ] Handler: `POST /auth/logout`
-- [ ] Handler: `GET /auth/me`
-- [ ] Middleware: `AuthRequired` (validasi JWT dari header/cookie)
-- [ ] Middleware: `RoleGuard(roles ...string)` (cek role dari JWT claim)
-- [ ] JWT: HS256, expiry 8 jam, secret dari env
-
-### 2.2 Modul Produk (Master Data)
-
-- [ ] Domain struct: `Produk`
-- [ ] Repository: `FindAll`, `FindByID`, `FindAktif`, `Create`, `Update`, `SoftDelete`
-- [ ] Service: validasi input, business logic
-- [ ] Handler: `GET /produk` (dengan filter `?aktif=true` untuk dropdown order)
-- [ ] Handler: `GET /produk/:id`
-- [ ] Handler: `POST /produk` (Admin only)
-- [ ] Handler: `PUT /produk/:id` (Admin only)
-- [ ] Handler: `PATCH /produk/:id` (soft-delete: `aktif = false`)
-- [ ] Validasi: nama, harga, kategori_pakaian wajib diisi
-
-### 2.3 Modul Customer (Master Data)
-
-- [ ] Domain struct: `Customer`
-- [ ] Repository: `FindAll`, `FindByID`, `Create`, `Update`
-- [ ] Handler: `GET /customer`
-- [ ] Handler: `GET /customer/:id`
-- [ ] Handler: `POST /customer`
-- [ ] Handler: `PUT /customer/:id`
-
-### 2.4 Modul User/Sales (Master Data)
-
-- [ ] Repository: `FindAll`, `FindByID`, `Create`, `Update`, `Deactivate`
-- [ ] Handler: `GET /users` (Admin only)
-- [ ] Handler: `GET /users/:id` (Admin only)
-- [ ] Handler: `POST /users` — buat user baru + set role + `telegram_user_id`
-- [ ] Handler: `PUT /users/:id` — edit profil + role
-- [ ] Handler: `PATCH /users/:id` — nonaktifkan akun
-- [ ] Hash password baru dengan bcrypt cost factor ≥ 12
-
-### 2.5 Settings Telegram
-
-- [ ] Handler: `GET /settings/telegram` (Admin only)
-- [ ] Handler: `PUT /settings/telegram` — update chat_id, jam_summary, threshold
+Acceptance:
+- [ ] Tidak ada data partial saat create order multi-item.
+- [ ] Cancel menyimpan alasan.
+- [ ] Verify payment mengubah status order sesuai rule.
 
 ---
 
-## FASE 3 — Backend: Transaksi
+## Sprint 3 — Reports + AI + Telegram Settings
 
-> **Target:** Seluruh siklus order dari pending → closed dapat diproses via API.  
-> **Progress: `0%`**
+**Goal:** dashboard backend siap dengan data agregasi dan insight AI.
 
-### 3.1 Modul Order
+- [ ] `GET /reports` (8 tipe report MVP)
+- [ ] Integrasi webhook n8n (dashboard insight)
+- [ ] `GET/PUT /settings/telegram`
+- [ ] Endpoint internal callback AI (`/internal/ai-result`) atau flow sinkron final
+- [ ] Fallback response saat n8n timeout/error
 
-- [ ] Domain struct: `Order`, `OrderDetail`, `OrderStatus`
-- [ ] Repository: `FindAll` (dengan filter status, sales_id, tanggal), `FindByID`, `Create`
-- [ ] Service: `CreateOrder` — validasi stok, **atomic transaction** (insert order + semua detail sekaligus)
-- [ ] Handler: `GET /orders` (filter: status, from, to, sales_id)
-- [ ] Handler: `GET /orders/:id`
-- [ ] Handler: `POST /orders` — buat order baru
-- [ ] Handler: `POST /orders/:id/confirm` → status: `confirmed`
-- [ ] Handler: `POST /orders/:id/cancel` → status: `cancelled` + field alasan
-
-### 3.2 Modul Pembayaran
-
-- [ ] Domain struct: `Pembayaran`
-- [ ] Repository: `FindByOrderID`, `Create`, `UpdateStatus`
-- [ ] Handler: `POST /payments` — catat pembayaran
-- [ ] Handler: `POST /payments/:id/verify` → status: `verified`, order status → `paid`
-
-### 3.3 Modul Pengiriman
-
-- [ ] Domain struct: `Pengiriman`
-- [ ] Repository: `FindByOrderID`, `Create`, `Update`
-- [ ] Handler: `POST /shipments` — catat nomor resi + kurir, order status → `shipped`
-- [ ] Handler: `PUT /shipments/:id` → status: `diterima`, order status → `closed`
+Acceptance:
+- [ ] Report valid untuk filter tanggal + sales.
+- [ ] Response berisi data chart + summary/recommendation.
+- [ ] Telegram settings dapat disimpan dan tervalidasi.
 
 ---
 
-## FASE 4 — Backend: Dashboard & AI Integration
+## Sprint 4 — Frontend Foundation + Public Store + Auth
 
-> **Target:** Endpoint laporan aggregasi berfungsi dan terintegrasi dengan n8n.  
-> **Progress: `0%`**
+**Goal:** frontend siap dipakai user untuk login dan melihat katalog.
 
-### 4.1 Modul Laporan (Reports)
+- [ ] Setup Next.js + data fetching + auth interceptor
+- [ ] Halaman login + protected route
+- [ ] Halaman `/` dan `/produk/:id`
+- [ ] UI base components + loading/error/empty state
+- [ ] Integrasi endpoint auth + produk
 
-- [ ] Implementasi query aggregasi per tipe laporan:
-  - [ ] `daily-sales` — penjualan per hari dalam rentang tanggal
-  - [ ] `monthly-sales` — penjualan per bulan
-  - [ ] `top-products` — produk terlaris berdasarkan qty/revenue
-  - [ ] `sales-by-person` — performa per sales
-  - [ ] `order-funnel` — count order per status
-  - [ ] `category-breakdown` — penjualan per kategori pakaian
-  - [ ] `low-stock` — produk dengan stok di bawah threshold
-  - [ ] `revenue-trend` — tren pendapatan per periode
-- [ ] Handler: `GET /reports?type=&from=&to=&sales_id=`
-- [ ] Whitelist validasi nilai `type` (hanya nilai yang diizinkan)
-- [ ] Kirim data aggregat ke n8n webhook
-- [ ] Terima respons n8n: `chart_type`, `summary`, `anomalies[]`, `recommendation`
-- [ ] Gabungkan data + AI response → return JSON ke frontend
+---
 
-### 4.2 Modul AI Chat (SSE)
+## Sprint 5 — Frontend Admin/Sales + Dashboard AI
 
-- [ ] Handler: `GET /chat/stream?message=`
-- [ ] Set SSE headers: `Content-Type: text/event-stream`, `Cache-Control: no-cache`
-- [ ] Query produk relevan dari DB berdasarkan keyword dari pesan
-- [ ] POST ke n8n chat workflow dengan pesan + context produk
-- [ ] Forward stream response dari n8n ke client via SSE
+**Goal:** operasional harian admin/sales dan dashboard insight selesai.
+
+- [ ] Halaman admin (produk, customer, users, telegram settings)
+- [ ] Halaman sales (order list/create/detail + status stepper)
+- [ ] Dashboard AI (selector, filter, chart renderer, insight card, anomaly flag)
+- [ ] Chat widget SSE
+- [ ] Export PDF laporan
+
+---
+
+## Sprint 6 — Security, QA, UAT, Release Candidate
+
+**Goal:** siap rilis internal dengan risiko minimum.
+
+- [ ] Rate limiting + audit authorization
+- [ ] Regression test flow inti
+- [ ] UAT bersama stakeholder
+- [ ] Fix bug severity tinggi
+- [ ] Final release checklist + runbook deploy
+
+---
+
+## 5) Board Eksekusi Sprint 1 (Siap Dipakai)
+
+| ID | Task | Status | Dependency | PIC |
+|---|---|---|---|---|
+| S1-01 | Setup auto-migrate GORM model + tag + schema init | Done | DB ready | BE |
+| S1-02 | Terapkan env policy migration (`prod/staging` run, `dev` skip) | Done | S1-01 | BE |
+| S1-03 | Uji startup di profile staging (auto-migrate harus jalan) | Todo | S1-02 | BE |
+| S1-04 | Seed data minimum (admin/manager/sales/customer) | Todo | S1-03 | BE |
+| S1-05 | Implement `POST /auth/logout` | Todo | login existing | BE |
+| S1-06 | Implement `GET /auth/me` | Todo | auth middleware | BE |
+| S1-07 | Implement `POST /auth/register` | Todo | S1-02 | BE |
+| S1-08 | Implement CRUD produk | Todo | S1-02 | BE |
+| S1-09 | Implement CRUD customer | Todo | S1-02 | BE |
+| S1-10 | Implement CRUD users | Todo | S1-01 | BE |
+| S1-11 | Stabilkan auth tests (no panic if DB unavailable) | Done | test strategy | BE/QA |
+| S1-12 | Update Swagger untuk endpoint Sprint 1 | Todo | S1-05..S1-10 | BE |
+
+---
+
+## 6) Definition of Ready / Done
+
+### Definition of Ready
+
+- [ ] Scope task jelas.
+- [ ] Acceptance criteria jelas.
+- [ ] Dependency tercatat.
+- [ ] Ada estimasi effort.
+- [ ] PIC sudah ditetapkan.
+
+### Definition of Done
+
+- [ ] Code review selesai.
+- [ ] Build lulus.
+- [ ] Test sesuai scope lulus.
+- [ ] API docs diupdate.
+- [ ] Tidak ada blocker kritikal terbuka.
+
+---
+
+## 7) Format Tracking Mingguan
+
+| Sprint | Planned | Done | Progress | Status | Blocker Utama |
+|---|---:|---:|---:|---|---|
+| Sprint 1 | 12 | 0 | 0% | Not Started | - |
+| Sprint 2 | 10 | 0 | 0% | Not Started | - |
+| Sprint 3 | 8 | 0 | 0% | Not Started | - |
+| Sprint 4 | 8 | 0 | 0% | Not Started | - |
+| Sprint 5 | 10 | 0 | 0% | Not Started | - |
+| Sprint 6 | 8 | 0 | 0% | Not Started | - |
+
+Status:
+- `Not Started`
+- `On Track`
+- `At Risk`
+- `Blocked`
+- `Done`
+
+---
+
+## 8) Template Review Sprint
+
+```md
+## Sprint X Review (Tanggal)
+
+### Progress
+- Planned:
+- Done:
+- Progress:
+
+### Selesai
+- ...
+
+### Blocker
+- ...
+
+### Carry Over ke Sprint Berikutnya
+- ...
+
+### Keputusan
+- ...
+```
 
 ---
 
